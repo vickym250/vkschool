@@ -1,0 +1,12 @@
+{
+  "firestore": {
+    "database": "(default)",
+    "location": "nam5",
+<<<<<<< HEAD
+    "rules": "n",
+=======
+    "rules": "firestore.rules",
+>>>>>>> a86c5b55597f50df9bd3a08d2b0769b9cf33db0a
+    "indexes": "firestore.indexes.json"
+  }
+}

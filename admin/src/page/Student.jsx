@@ -1,0 +1,268 @@
+import React, { useState, useEffect } from "react";
+import AddStudent from "../component/AddStudent";
+import Readmission from "../component/Readmission";
+import { db } from "../firebase";
+import {
+  collection,
+  onSnapshot,
+  query,
+  orderBy,
+  doc,
+  updateDoc,
+  serverTimestamp,
+  where,
+} from "firebase/firestore";
+import toast from "react-hot-toast";
+import { useNavigate } from "react-router-dom";
+import { updateTotalStudents } from "../component/updateTotalStudents";
+import AdmissionDetails from "../component/AdmisionForm";
+
+export default function StudentList() {
+  let navigator = useNavigate();
+
+  const CURRENT_ACTIVE_SESSION = "2025-26";
+  const sessions = ["2024-25", "2025-26", "2026-27"];
+  const [session, setSession] = useState("2025-26");
+  const schoolClasses = ["LKG", "UKG", ...Array.from({ length: 12 }, (_, i) => `Class ${i + 1}`)];
+  const [className, setClassName] = useState("Class 10");
+
+  const [open, setOpen] = useState(false);
+  const [openRe, setOpenRe] = useState(false);
+  const [openDetails, setOpenDetails] = useState(false);
+  const [selectedStudentForDetails, setSelectedStudentForDetails] = useState(null);
+
+  const [editStudent, setEditStudent] = useState(null);
+  const [students, setStudents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [rowsToShow, setRowsToShow] = useState(5);
+
+  useEffect(() => {
+    setLoading(true);
+    const q = query(
+      collection(db, "students"), 
+      where("session", "==", session), 
+      where("className", "==", className), 
+      orderBy("createdAt", "desc")
+    );
+
+    const unsub = onSnapshot(q, (snap) => {
+      const list = snap.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .filter((s) => !s.deletedAt);
+      setStudents(list);
+      setLoading(false);
+    }, (error) => {
+      console.error("Firestore Error:", error);
+      setLoading(false);
+    });
+
+    return () => unsub();
+  }, [session, className]);
+
+  const filteredStudents = students
+    .filter((s) => {
+      const matchSearch = s.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        s.rollNumber?.toString().includes(searchTerm);
+      return matchSearch;
+    })
+    .sort((a, b) => parseInt(a.rollNumber || 0) - parseInt(b.rollNumber || 0));
+
+  const displayedStudents = searchTerm 
+    ? filteredStudents 
+    : filteredStudents.slice(0, rowsToShow);
+
+  // --- Print Logic ---
+  const handlePrint = () => {
+    const printContent = document.getElementById("printableTable");
+    const newWindow = window.open("", "_blank");
+    
+    newWindow.document.write(`
+      <html>
+        <head>
+          <title>Student List - ${className}</title>
+          <script src="https://cdn.tailwindcss.com"></script>
+          <style>
+            @media print {
+              .no-print { display: none !important; }
+              @page { size: A4 landscape; margin: 10mm; }
+              table { width: 100%; border-collapse: collapse; table-layout: auto; }
+              th, td { 
+                border: 1px solid #000 !important; 
+                padding: 6px !important; 
+                text-align: left; 
+                font-size: 11px; 
+                word-wrap: break-word; 
+                white-space: normal !important; /* Address wrap karne ke liye */
+              }
+              .address-cell { 
+                max-width: none !important; 
+                overflow: visible !important; 
+                text-overflow: clip !important; 
+                white-space: normal !important; 
+              }
+              th { background-color: #f3f4f6 !important; -webkit-print-color-adjust: exact; }
+              img { width: 35px; height: 35px; border-radius: 50%; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="p-4">
+            <h2 class="text-xl font-bold text-center mb-1">STUDENT LIST</h2>
+            <p class="text-center mb-4 text-sm font-semibold">CLASS: ${className} | SESSION: ${session}</p>
+            ${printContent.innerHTML}
+          </div>
+          <script>
+            window.onload = function() {
+              setTimeout(() => {
+                window.print();
+                window.close();
+              }, 800);
+            };
+          </script>
+        </body>
+      </html>
+    `);
+    newWindow.document.close();
+  };
+
+  const handleReAdmission = (student) => {
+    setEditStudent(student);
+    setOpenRe(true);
+  };
+
+  const handleOpenDetails = (student) => {
+    setSelectedStudentForDetails(student);
+    setOpenDetails(true);
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm("Archive student?")) return;
+    await updateDoc(doc(db, "students", id), { deletedAt: serverTimestamp() });
+    toast.success("Archived");
+    await updateTotalStudents();
+  };
+
+  return (
+    <div className="p-4 md:p-6 bg-white min-h-screen font-sans">
+      <div className={`max-w-[1400px] mx-auto ${(open || openRe || openDetails) ? "blur-md pointer-events-none" : ""}`}>
+
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl font-black text-gray-800">Student List ({session})</h2>
+          <button 
+            onClick={handlePrint}
+            className="bg-gray-800 text-white px-5 py-1.5 rounded-md font-bold text-sm shadow hover:bg-black uppercase"
+          >
+            Print List
+          </button>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 mb-6">
+          <select value={session} onChange={(e) => { setSession(e.target.value); setRowsToShow(5); }} className="border border-gray-300 rounded-md px-3 py-1.5 text-sm font-bold bg-white outline-none">
+            {sessions.map(s => <option key={s}>{s}</option>)}
+          </select>
+          <select value={className} onChange={(e) => { setClassName(e.target.value); setRowsToShow(5); }} className="border border-gray-300 rounded-md px-3 py-1.5 text-sm font-bold bg-white outline-none">
+            {schoolClasses.map(cls => <option key={cls} value={cls}>{cls}</option>)}
+          </select>
+          <div className="flex-grow">
+            <input type="text" placeholder="Search by name or roll..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full border border-gray-300 rounded-md px-4 py-1.5 text-sm outline-none" />
+          </div>
+          <button onClick={() => { setEditStudent(null); setOpen(true); }} className="bg-[#FFC107] text-black px-5 py-1.5 rounded-md font-bold text-sm shadow hover:bg-amber-500 uppercase">Add Student</button>
+        </div>
+
+        <div id="printableTable" className="border border-gray-200 rounded-lg overflow-x-auto shadow-sm bg-white">
+          <table className="w-full text-left min-w-[1000px]">
+            <thead className="bg-[#E2E8F0] text-[#475569] text-[12px] font-bold uppercase tracking-tight">
+              <tr>
+                <th className="px-4 py-4 w-20">Photo</th>
+                <th className="px-4 py-4 text-center w-20">Registion No</th>
+                <th className="px-4 py-4 text-center w-20">Roll</th>
+                <th className="px-4 py-4">Name</th>
+                <th className="px-4 py-4">Father Name</th>
+                <th className="px-4 py-4">Mother Name</th>
+                <th className="px-4 py-4">Aadhar</th>
+                <th className="px-4 py-4">Category</th>
+<<<<<<< HEAD
+                <th className="px-4 py-4">Gender</th>
+=======
+>>>>>>> a86c5b55597f50df9bd3a08d2b0769b9cf33db0a
+                <th className="px-4 py-4">Phone</th>
+                <th className="px-4 py-4">Address</th>
+                <th className="px-4 py-4 text-center no-print">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {loading ? (
+                <tr><td colSpan="9" className="text-center py-10">Loading...</td></tr>
+              ) : displayedStudents.length === 0 ? (
+                <tr><td colSpan="9" className="text-center py-10 text-gray-400">No students found.</td></tr>
+              ) : (
+                displayedStudents.map((s) => (
+                  <tr key={s.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-4 py-2 text-center">
+                      <div className="w-10 h-10 rounded-full overflow-hidden border border-gray-200 bg-gray-50 mx-auto">
+                        {s.photoURL ? <img src={s.photoURL} className="w-full h-full object-cover" alt="" /> : <span className="flex items-center justify-center h-full text-gray-400 font-bold">{s.name?.[0]}</span>}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-sm font-bold text-gray-500 text-center">{s.regNo}</td>
+                    <td className="px-4 py-3 text-sm font-bold text-gray-500 text-center">{s.rollNumber}</td>
+                    <td className="px-4 py-3 text-xs font-bold text-gray-800 uppercase">{s.name}</td>
+                    <td className="px-4 py-3 text-sm text-gray-500">{s.fatherName}</td>
+                    <td className="px-4 py-3 text-sm text-gray-500">{s.motherName || ""}</td>
+                    <td className="px-4 py-3 text-sm text-gray-500">{s.aadharNumber || " "}</td>
+                    <td className="px-4 py-3 text-sm text-gray-500">{s.category || ""}</td>
+<<<<<<< HEAD
+                    <td className="px-4 py-3 text-sm text-gray-500">{s.gender || ""}</td>
+=======
+>>>>>>> a86c5b55597f50df9bd3a08d2b0769b9cf33db0a
+                    <td className="px-4 py-3 text-sm text-gray-500">{s.phone || " "}</td>
+                    {/* Address cell updated with address-cell class */}
+                    <td className="px-4 py-3 text-xs text-gray-500 address-cell">{s.address || ""}</td>
+                    <td className="px-4 py-3 no-print">
+                      <div className="flex items-center justify-center gap-1.5">
+                        <button onClick={() => handleOpenDetails(s)} className="bg-gray-600 text-white px-3 py-1 rounded text-[11px] font-bold hover:bg-gray-700 uppercase">Details</button>
+                        <button onClick={() => navigator(`/feesrec/${s.id}`)} className="bg-[#2563EB] text-white px-3 py-1 rounded text-[11px] font-bold hover:bg-blue-700 uppercase">Fees</button>
+                        {s.session === CURRENT_ACTIVE_SESSION ? (
+                          <button onClick={() => { setEditStudent(s); setOpen(true); }} className="bg-[#FBBF24] text-white px-3 py-1 rounded text-[11px] font-bold hover:bg-amber-500 uppercase">Edit</button>
+                        ) : (
+                          <>
+                            {s.status === "promoted" || s.isPromoted ? (
+                              <button disabled className="bg-gray-200 text-gray-500 px-2 py-1 rounded text-[11px] font-bold uppercase cursor-not-allowed">Completed ✅</button>
+                            ) : (
+                              <button onClick={() => handleReAdmission(s)} className="bg-emerald-600 text-white px-2 py-1 rounded text-[11px] font-bold hover:bg-emerald-700 uppercase">Re-Admit</button>
+                            )}
+                            <button onClick={() => navigator(`/tc/${s.id}`)} className="bg-red-600 text-white px-2 py-1 rounded text-[11px] font-bold hover:bg-red-700 uppercase">TC</button>
+                          </>
+                        )}
+                        <button onClick={() => handleDelete(s.id)} className="bg-[#EF4444] text-white px-3 py-1 rounded text-[11px] font-bold hover:bg-red-600 uppercase">Delete</button>
+                        <button onClick={() => navigator(`/idcard/${s.id}`)} className="bg-white text-blue-600 border border-blue-600 px-3 py-1 rounded text-[11px] font-bold hover:bg-blue-50 uppercase tracking-tighter">IdCard</button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {!loading && !searchTerm && filteredStudents.length > rowsToShow && (
+          <div className="mt-6 flex justify-center pb-10 no-print">
+            <button onClick={() => setRowsToShow(prev => prev + 10)} className="px-8 py-2 bg-indigo-600 text-white text-sm font-bold rounded-full hover:bg-indigo-700 transition-all shadow-lg uppercase tracking-wide">
+              Show More Students ({filteredStudents.length - rowsToShow} remaining)
+            </button>
+          </div>
+        )}
+      </div>
+
+      {open && <AddStudent close={() => { setOpen(false); setEditStudent(null); }} editData={editStudent} />}
+      {openRe && <Readmission close={() => { setOpenRe(false); setEditStudent(null); }} studentData={editStudent} />}
+      {openDetails && selectedStudentForDetails && (
+        <AdmissionDetails
+          studentId={selectedStudentForDetails.id} 
+          subjects={selectedStudentForDetails.subjects || []}
+          onClose={() => { setOpenDetails(false); setSelectedStudentForDetails(null); }} 
+        />
+      )}
+    </div>
+  );
+}
