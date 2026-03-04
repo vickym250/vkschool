@@ -182,10 +182,7 @@ export default function StudentList() {
                 <th className="px-4 py-4">Mother Name</th>
                 <th className="px-4 py-4">Aadhar</th>
                 <th className="px-4 py-4">Category</th>
-<<<<<<< HEAD
                 <th className="px-4 py-4">Gender</th>
-=======
->>>>>>> a86c5b55597f50df9bd3a08d2b0769b9cf33db0a
                 <th className="px-4 py-4">Phone</th>
                 <th className="px-4 py-4">Address</th>
                 <th className="px-4 py-4 text-center no-print">Action</th>
@@ -211,10 +208,7 @@ export default function StudentList() {
                     <td className="px-4 py-3 text-sm text-gray-500">{s.motherName || ""}</td>
                     <td className="px-4 py-3 text-sm text-gray-500">{s.aadharNumber || " "}</td>
                     <td className="px-4 py-3 text-sm text-gray-500">{s.category || ""}</td>
-<<<<<<< HEAD
                     <td className="px-4 py-3 text-sm text-gray-500">{s.gender || ""}</td>
-=======
->>>>>>> a86c5b55597f50df9bd3a08d2b0769b9cf33db0a
                     <td className="px-4 py-3 text-sm text-gray-500">{s.phone || " "}</td>
                     {/* Address cell updated with address-cell class */}
                     <td className="px-4 py-3 text-xs text-gray-500 address-cell">{s.address || ""}</td>

@@ -24,36 +24,35 @@ const monthsOrder = [
 export function AddTeacherPopup({ close, editData }) {
   const [form, setForm] = useState({
     name: "",
-    role: "Teacher", // ✨ Naya Field
-    otherRole: "",   // ✨ Naya Field (Custom entry ke liye)
+    role: "Teacher",
+    otherRole: "",
     subject: "",
     phone: "",
+    password: "", // ✨ Naya Field: Password
     salary: "",
     address: "",
-    session: calculateSession(), // ✨ Auto Set
-    joiningDate: new Date().toISOString().split("T")[0], // ✨ Auto Date
+    session: calculateSession(),
+    joiningDate: new Date().toISOString().split("T")[0],
     photo: null,
     photoURL: "",
     isClassTeacher: false,
     classTeacherOf: "",
   });
 
-  // 🆕 Dynamic States from Firestore
   const [masterData, setMasterData] = useState(null);
   const [classList, setClassList] = useState([]);
   const [show, setShow] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // 🚀 Fetching Master Data from school_config/master_data
   useEffect(() => {
     const fetchMasterData = async () => {
       try {
         const docRef = doc(db, "school_config", "master_data");
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
-          const data = docSnap.data().mapping; // Screenshot ke hisaab se 'mapping' field
+          const data = docSnap.data().mapping;
           setMasterData(data);
-          setClassList(Object.keys(data)); // Sari classes nikal li
+          setClassList(Object.keys(data));
         }
       } catch (err) {
         console.error("Master data fetch error:", err);
@@ -69,6 +68,7 @@ export function AddTeacherPopup({ close, editData }) {
         ...editData,
         role: editData.role || "Teacher",
         salary: editData.salary || "",
+        password: editData.password || "", // Edit mode mein password load karna
         joiningDate: editData.joiningDate || new Date().toISOString().split("T")[0],
         isClassTeacher: editData.isClassTeacher || false,
         classTeacherOf: editData.classTeacherOf || "",
@@ -108,6 +108,11 @@ export function AddTeacherPopup({ close, editData }) {
       return;
     }
 
+    if (form.password.length < 6) {
+      toast.error("Password kam se kam 6 characters ka hona chahiye!");
+      return;
+    }
+
     setLoading(true);
     try {
       let photoURL = form.photoURL;
@@ -118,14 +123,14 @@ export function AddTeacherPopup({ close, editData }) {
         photoURL = await getDownloadURL(imageRef);
       }
 
-      // Final Role Decide karna (Other select kiya hai ya Dropdown se)
       const finalRole = form.role === "Other" ? form.otherRole : form.role;
 
       const teacherData = {
         name: form.name,
-        role: finalRole, // ✨ Database me role jayega
+        role: finalRole,
         subject: form.role === "Teacher" ? form.subject : "N/A",
         phone: form.phone,
+        password: form.password, // ✨ Database mein password jayega
         salary: Number(form.salary),
         address: form.address,
         session: form.session,
@@ -186,7 +191,7 @@ export function AddTeacherPopup({ close, editData }) {
                 className="w-full border-b-2 border-gray-100 focus:border-indigo-500 outline-none py-2 transition-colors" />
             </div>
 
-            {/* ✨ Naya Field: Staff Type Dropdown */}
+            {/* Staff Type Dropdown */}
             <div>
               <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Staff Type (Role)</label>
               <select name="role" value={form.role} onChange={handleChange} required
@@ -199,7 +204,7 @@ export function AddTeacherPopup({ close, editData }) {
               </select>
             </div>
 
-            {/* ✨ Naya Field: Custom Role Input (Jab 'Other' chuna ho) */}
+            {/* Custom Role Input */}
             {form.role === "Other" && (
               <div className="md:col-span-2">
                 <label className="text-xs font-bold text-orange-500 uppercase tracking-wider">Specify Your Role</label>
@@ -209,9 +214,9 @@ export function AddTeacherPopup({ close, editData }) {
               </div>
             )}
 
-            {/* Dynamic Subject - Only for Teachers */}
+            {/* Dynamic Subject */}
             {form.role === "Teacher" && (
-              <div>
+              <div className="md:col-span-2">
                 <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Subject</label>
                 <select name="subject" value={form.subject} onChange={handleChange} required
                   className="w-full border-b-2 border-gray-100 focus:border-indigo-500 outline-none py-2 transition-colors bg-white">
@@ -223,8 +228,8 @@ export function AddTeacherPopup({ close, editData }) {
               </div>
             )}
 
-            {/* Phone */}
-            <div className="md:col-span-2 bg-indigo-50/50 p-3 rounded-lg border border-indigo-100">
+            {/* Phone (Login ID) */}
+            <div className="bg-indigo-50/50 p-3 rounded-lg border border-indigo-100">
               <label className="text-xs font-bold text-indigo-600 uppercase tracking-wider">Mobile Number (Login ID)</label>
               <div className="flex items-center gap-2">
                 <span className="text-gray-500 font-medium">+91</span>
@@ -232,6 +237,14 @@ export function AddTeacherPopup({ close, editData }) {
                   placeholder="98XXXXXXXX"
                   className="w-full bg-transparent outline-none py-1 text-lg font-bold text-indigo-900" />
               </div>
+            </div>
+
+            {/* ✨ Naya Field: Password */}
+            <div className="bg-slate-50 p-3 rounded-lg border border-slate-200">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Login Password</label>
+              <input name="password" type="text" value={form.password} onChange={handleChange} required
+                placeholder="Min 6 characters"
+                className="w-full bg-transparent outline-none py-1 text-lg font-bold text-slate-900" />
             </div>
 
             {/* Joining Date */}
@@ -250,7 +263,7 @@ export function AddTeacherPopup({ close, editData }) {
             </div>
           </div>
 
-          {/* Class Teacher Section - Only for Teachers */}
+          {/* Class Teacher Section */}
           {form.role === "Teacher" && (
             <div className="bg-gray-50 p-4 rounded-xl space-y-3 border border-gray-100">
               <div className="flex items-center gap-3">

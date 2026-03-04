@@ -10,12 +10,8 @@ import {
   setDoc,
   addDoc,
   serverTimestamp,
-<<<<<<< HEAD
   where,
   limit
-=======
-  where // 🔥 Naya import add kiya filtering ke liye
->>>>>>> a86c5b55597f50df9bd3a08d2b0769b9cf33db0a
 } from "firebase/firestore";
 import toast from "react-hot-toast";
 
@@ -37,7 +33,6 @@ export default function Attendance() {
   const [searchTerm, setSearchTerm] = useState("");
   const [holidays, setHolidays] = useState({});
   const [activeTooltip, setActiveTooltip] = useState(null);
-<<<<<<< HEAD
   const [loading, setLoading] = useState(true); // Main Loader
   const [actionLoading, setActionLoading] = useState(false); // Button Loader
 
@@ -48,30 +43,9 @@ export default function Attendance() {
       const fetchedClasses = snap.docs.map(doc => doc.data().name || doc.id);
       setClassList(fetchedClasses);
       if (fetchedClasses.length > 0 && !className) setClassName(fetchedClasses[0]);
-=======
-  const [loading, setLoading] = useState(true); // 🔥 Loading state add ki
-
-  /* ---------------- LOAD DATA (OPTIMIZED) ---------------- */
-  useEffect(() => {
-    setLoading(true);
-    // 🔥 Pura data mangane ki jagah sirf selected session aur class ka data query kiya
-    const q = query(
-      collection(db, "students"), 
-      where("session", "==", session),
-      where("className", "==", className),
-      orderBy("rollNumber", "asc")
-    );
-
-    const unsub = onSnapshot(q, (snap) => {
-      setStudents(snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(s => !s.deletedAt));
-      setLoading(false);
-    }, (error) => {
-      console.error("Firestore Error:", error);
-      setLoading(false);
->>>>>>> a86c5b55597f50df9bd3a08d2b0769b9cf33db0a
     });
     return () => unsub();
-  }, [session, className]); // 🔥 Session ya Class badalne par hi database call hoga
+  }, []);
 
   /* ---------------- LOAD DATA (Real-time Sync Fix) ---------------- */
   useEffect(() => {
@@ -189,7 +163,6 @@ export default function Attendance() {
     }
   };
 
-<<<<<<< HEAD
   /* ---------------- PRINT LOGIC (Logic Intact) ---------------- */
   const handlePrint = () => {
     const printContent = document.getElementById("attendance-table-to-print");
@@ -238,12 +211,6 @@ export default function Attendance() {
     acc.totalAbsent += (mData.absent || 0);
     return acc;
   }, { totalPresent: 0, totalAbsent: 0 });
-=======
-  /* ---------------- FILTER & SORT ---------------- */
-  const filteredData = students
-    .filter(s => s.name?.toLowerCase().includes(searchTerm.toLowerCase()))
-    .sort((a, b) => parseInt(a.rollNumber || 0) - parseInt(b.rollNumber || 0));
->>>>>>> a86c5b55597f50df9bd3a08d2b0769b9cf33db0a
 
   return (
     <div className="min-h-screen bg-gray-50 px-2 py-4 sm:px-6 md:py-8" onClick={() => setActiveTooltip(null)}>
@@ -293,7 +260,6 @@ export default function Attendance() {
           <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Search..." className="border p-2.5 rounded-lg text-sm w-full outline-none focus:ring-2 focus:ring-blue-500" />
         </div>
 
-<<<<<<< HEAD
         {/* TABLE */}
         <div id="attendance-table-to-print" className="bg-white overflow-hidden mb-4 border-2 border-black">
           <div className="overflow-x-auto max-h-[65vh] relative">
@@ -345,101 +311,6 @@ export default function Attendance() {
                 })}
               </tbody>
             </table>
-=======
-        <div id="attendance-table-to-print" className="bg-white border border-gray-200 rounded-2xl shadow-xl overflow-hidden">
-          <div className="overflow-x-auto overflow-y-auto max-h-[65vh] relative">
-            {loading ? (
-              <div className="text-center py-20 font-bold text-gray-400">Loading Attendance Data...</div>
-            ) : (
-              <table className="w-full border-separate border-spacing-0 table-fixed">
-                <thead>
-                  <tr className="bg-slate-800 text-white">
-                    <th className="sticky left-0 z-40 bg-slate-800 p-4 text-left w-[140px] sm:w-[200px] border-b border-slate-700 shadow-md">Student Info</th>
-                    {[...Array(getDaysInMonth())].map((_, i) => {
-                      const day = i + 1;
-                      const sun = isSunday(day);
-                      return (
-                        <th key={i} className={`p-2 text-center border-b border-slate-700 w-[50px] sm:w-[55px] ${day === currentDay && month === currentMonthName ? "bg-orange-500" : ""}`}>
-                          <div className="flex flex-col items-center gap-1">
-                            <span className="text-[10px] font-bold">{day}</span>
-                            <button onClick={() => toggleHoliday(day)} className={`no-print text-[9px] px-1 py-0.5 rounded border transition-all ${sun ? "bg-red-700 text-white border-red-800" : holidays[`day_${day}`] ? "bg-red-50 text-white border-red-400" : "bg-slate-700 text-gray-400 border-slate-600 hover:text-white"}`}>{sun ? "S" : holidays[`day_${day}`] ? "H" : "D"}</button>
-                          </div>
-                        </th>
-                      );
-                    })}
-                    <th className="p-2 text-center bg-green-700 text-white w-[60px] border-b border-slate-700 sticky right-[60px] z-30">Total P</th>
-                    <th className="p-2 text-center bg-red-700 text-white w-[60px] border-b border-slate-700 sticky right-0 z-30">Total A</th>
-                  </tr>
-                </thead>
-
-                <tbody className="divide-y divide-gray-100">
-                  {filteredData.map(student => {
-                    const monthData = student.attendance?.[month] || {};
-                    return (
-                      <tr key={student.id} className="group hover:bg-blue-50/20">
-                        <td className="sticky left-0 z-20 bg-white group-hover:bg-blue-50 p-3 sm:p-4 border-r border-gray-100 font-bold text-xs sm:text-sm text-gray-800 truncate student-info">
-                          {student.name}
-                          <div className="text-[9px] text-gray-400 font-normal italic no-print">Roll: {student.rollNumber}</div>
-                        </td>
-
-                        {[...Array(getDaysInMonth())].map((_, i) => {
-                          const day = i + 1;
-                          const sun = isSunday(day);
-                          const dayKey = `day_${day}`;
-                          const isH = holidays[dayKey] || sun;
-                          const status = monthData[`${month}_day_${day}`];
-                          const tooltipKey = `${student.id}_${day}`;
-                          const reason = sun ? "SUNDAY" : (holidays[`${dayKey}_reason`] || "HOLIDAY");
-
-                          return (
-                            <td key={day} className={`text-center p-1 sm:p-2 relative group/cell ${isH ? "bg-red-50/40 holiday-bg" : ""}`}>
-                              {isH ? (
-                                <div 
-                                  className="relative flex items-center justify-center h-[55px] w-full cursor-pointer"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setActiveTooltip(activeTooltip === tooltipKey ? null : tooltipKey);
-                                  }}
-                                >
-                                  <span className={`text-[8px] font-black rotate-[-90deg] uppercase tracking-tighter ${sun ? "text-red-800" : "text-red-500"} holiday-label`}>
-                                    {sun ? "S" : "H"}
-                                  </span>
-
-                                  {(activeTooltip === tooltipKey) && (
-                                    <div className="fixed z-[1000] -translate-y-20 -translate-x-1/2 left-1/2 md:absolute md:-translate-y-24 md:left-1/2 pointer-events-auto no-print">
-                                      <div className="bg-slate-900 text-white border border-slate-700 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] p-5 min-w-[180px] max-w-[260px] text-center animate-in fade-in zoom-in duration-200">
-                                        <div className="text-[10px] font-bold text-red-400 uppercase mb-2 tracking-[0.2em] border-b border-slate-700 pb-2">🚩 Reason</div>
-                                        <div className="text-sm font-extrabold text-slate-100 leading-relaxed italic">"{reason}"</div>
-                                        <div className="absolute top-full left-1/2 -translate-x-1/2 border-[10px] border-transparent border-t-slate-900"></div>
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-                              ) : (
-                                <div className="flex flex-col gap-1 items-center justify-center min-h-[55px]">
-                                  <div className="no-print flex flex-col gap-1">
-                                    <button onClick={() => markAttendance(student, day, "P")} className={`w-9 h-7 text-[10px] font-black rounded-lg ${status === "P" ? "bg-green-600 text-white shadow-md" : "bg-gray-100 text-gray-400 hover:bg-green-100"}`}>P</button>
-                                    <button onClick={() => markAttendance(student, day, "A")} className={`w-9 h-7 text-[10px] font-black rounded-lg ${status === "A" ? "bg-red-600 text-white shadow-md" : "bg-gray-100 text-gray-400 hover:bg-red-100"}`}>A</button>
-                                  </div>
-                                  <span className="hidden print:block status-val">{status || "-"}</span>
-                                </div>
-                              )}
-                            </td>
-                          );
-                        })}
-                        <td className="text-center font-black text-green-700 bg-green-50 border-l border-green-100 sticky right-[60px] z-10">
-                          {monthData.present || 0}
-                        </td>
-                        <td className="text-center font-black text-red-700 bg-red-50 border-l border-red-100 sticky right-0 z-10">
-                          {monthData.absent || 0}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            )}
->>>>>>> a86c5b55597f50df9bd3a08d2b0769b9cf33db0a
           </div>
         </div>
 

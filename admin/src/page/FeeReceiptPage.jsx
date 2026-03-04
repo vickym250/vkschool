@@ -33,10 +33,6 @@ const StudentBilling = () => {
 
   const monthsList = ["Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"];
 
-<<<<<<< HEAD
-=======
-  // --- 🟢 Load Data from LocalStorage ---
->>>>>>> a86c5b55597f50df9bd3a08d2b0769b9cf33db0a
   useEffect(() => {
     if (id) {
       const savedMonths = localStorage.getItem(`selectedMonths_${id}`);
@@ -115,25 +111,14 @@ const StudentBilling = () => {
 
   useEffect(() => { fetchData(); }, [id]);
 
-  // --- 🟢 FIXED: No Reload, Just State Reset & Refetch ---
   const handleCloseReceipt = () => {
     setShowReceipt(false);
     setReceiptData(null);
-<<<<<<< HEAD
-=======
-    
-    // Reset local state fields
->>>>>>> a86c5b55597f50df9bd3a08d2b0769b9cf33db0a
     setSelectedMonths({});
     setUncheckedItems({});
     setExtraCharges([]);
     setAmountReceived("");
     setDiscount("");
-<<<<<<< HEAD
-=======
-    
-    // Naya data load karein UI update ke liye
->>>>>>> a86c5b55597f50df9bd3a08d2b0769b9cf33db0a
     fetchData();
   };
 
@@ -262,19 +247,10 @@ const StudentBilling = () => {
   const netPayable = (billDetails.currentBillTotal + billDetails.totalOldBalance) - Number(discount || 0);
   const finalNewBalance = netPayable - Number(amountReceived || 0);
 
-<<<<<<< HEAD
   const isMonthSelected = billDetails.studentWiseBreakdown.some(s => (selectedMonths[s.studentId]?.length > 0));
   const canPay = (isMonthSelected || billDetails.totalOldBalance > 0) && Number(amountReceived) > 0;
 
   const handleSaveAndPrint = async () => {
-=======
-  const isMonthSelected = billDetails.studentWiseBreakdown.length > 0;
-
-  const handleSaveAndPrint = async () => {
-    if (!isMonthSelected && billDetails.totalOldBalance <= 0) {
-      return toast.error("Pehle mahina select karein!");
-    }
->>>>>>> a86c5b55597f50df9bd3a08d2b0769b9cf33db0a
     if (!amountReceived || Number(amountReceived) < 0) {
         return toast.error("Received Amount bharein!");
     }
@@ -283,12 +259,9 @@ const StudentBilling = () => {
     try {
       const currentTime = new Date().toISOString();
       const receiptId = `REC-${Date.now()}`;
-<<<<<<< HEAD
       
       let remainingCash = Number(amountReceived || 0);
       let remainingDiscount = Number(discount || 0);
-=======
->>>>>>> a86c5b55597f50df9bd3a08d2b0769b9cf33db0a
 
       const sortedStudents = [...familyMembers].sort((a, b) => 
         a.id === id ? -1 : b.id === id ? 1 : 0
@@ -298,7 +271,6 @@ const StudentBilling = () => {
         if (excludedStudents[studentObj.id]) continue;
 
         const studentMonths = selectedMonths[studentObj.id] || [];
-<<<<<<< HEAD
         const breakdown = billDetails.studentWiseBreakdown.find(b => b.studentId === studentObj.id);
         const activeItems = breakdown ? breakdown.items.filter(it => it.isChecked) : [];
         
@@ -347,43 +319,16 @@ const StudentBilling = () => {
           oldBalance: oldBal,
           extraCharges: studentObj.id === id ? extraCharges : [],
           balanceAfterThis: studentNewFinalBalance,
-=======
-        const activeItems = studentGroup.items.filter(it => it.isChecked);
-        const isPrimary = studentObj.id === id;
-        const updatedBalanceForThisStudent = isPrimary ? finalNewBalance : Number(studentObj.currentBalance || 0);
-
-        const historyEntry = {
-          receiptId,
-          months: studentMonths.sort((a, b) => monthsList.indexOf(a) - monthsList.indexOf(b)),
-          allCharges: activeItems,
-          paidAt: currentTime,
-          paymentMode,
-          received: isPrimary ? Number(amountReceived || 0) : 0,
-          discount: isPrimary ? Number(discount || 0) : 0, 
-          currentTotal: activeItems.reduce((acc, it) => acc + it.total, 0),
-          oldBalance: Number(studentObj.currentBalance || 0),
-          extraCharges: isPrimary ? extraCharges : [],
-          balanceAfterThis: updatedBalanceForThisStudent,
->>>>>>> a86c5b55597f50df9bd3a08d2b0769b9cf33db0a
           session: activeSession 
         };
 
         const feeRef = doc(db, "feesManage", studentObj.id);
         const feeDocCheck = await getDoc(feeRef);
-<<<<<<< HEAD
         if (!feeDocCheck.exists()) {
             await setDoc(feeRef, {
                 studentId: studentObj.id,
                 studentName: studentObj.name,
                 className: studentObj.className,
-=======
-        
-        if (!feeDocCheck.exists()) {
-            await setDoc(feeRef, {
-                studentId: studentObj.id,
-                studentName: studentGroup.studentName,
-                className: studentGroup.className,
->>>>>>> a86c5b55597f50df9bd3a08d2b0769b9cf33db0a
                 history: [historyEntry]
             });
         } else {
@@ -398,17 +343,12 @@ const StudentBilling = () => {
 
         await updateDoc(doc(db, "students", studentObj.id), {
           fees: updatedFees,
-<<<<<<< HEAD
           currentBalance: studentNewFinalBalance 
-=======
-          currentBalance: updatedBalanceForThisStudent
->>>>>>> a86c5b55597f50df9bd3a08d2b0769b9cf33db0a
         });
       }
 
       setReceiptData({
         receiptId, studentId: id,
-<<<<<<< HEAD
         studentWiseBreakdown: billDetails.studentWiseBreakdown.map(g => {
             const active = g.items.filter(i => i.isChecked);
             return {
@@ -420,13 +360,6 @@ const StudentBilling = () => {
         oldBalance: billDetails.totalOldBalance, currentTotal: billDetails.currentBillTotal,
         netPayable, paymentMode, balance: finalNewBalance, paidAt: currentTime,
         payMonth: isMonthSelected ? [...new Set(Object.values(selectedMonths).flat())].join(", ") : "Dues Clear",
-=======
-        studentWiseBreakdown: billDetails.studentWiseBreakdown.map(g => ({...g, items: g.items.filter(i => i.isChecked)})),
-        extraCharges, discount: Number(discount || 0), received: Number(amountReceived || 0),
-        oldBalance: billDetails.totalOldBalance, currentTotal: billDetails.currentBillTotal,
-        netPayable, paymentMode, balance: finalNewBalance, paidAt: currentTime,
-        payMonth: [...new Set(Object.values(selectedMonths).flat())].join(", "),
->>>>>>> a86c5b55597f50df9bd3a08d2b0769b9cf33db0a
         session: activeSession
       });
 
@@ -435,17 +368,10 @@ const StudentBilling = () => {
       localStorage.removeItem(`excludedStudents_${id}`);
 
       setShowReceipt(true);
-<<<<<<< HEAD
       toast.success("Billing Success!");
     } catch (e) { 
         console.error(e);
         toast.error("Process failed!"); 
-=======
-      toast.success("Fees Paid Successfully!");
-    } catch (e) { 
-        console.error(e);
-        toast.error("Saving failed!"); 
->>>>>>> a86c5b55597f50df9bd3a08d2b0769b9cf33db0a
     }
     setIsProcessing(false);
   };
@@ -534,11 +460,7 @@ const StudentBilling = () => {
                         return (
                             <button 
                               key={m} 
-<<<<<<< HEAD
                               type="button" 
-=======
-                              type="button"
->>>>>>> a86c5b55597f50df9bd3a08d2b0769b9cf33db0a
                               onClick={() => isPaid ? handleViewOldReceipt(student.id, m) : toggleMonth(student.id, m)}
                               className={`p-2 rounded-xl border-2 text-[10px] font-bold transition-all flex flex-col items-center justify-center gap-1
                                 ${isPaid ? 'bg-emerald-500 text-white border-emerald-600 shadow-sm' : isSelected ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-white border-slate-100 text-slate-400'}`}
@@ -579,15 +501,9 @@ const StudentBilling = () => {
           <div className="bg-white p-6 rounded-2xl border-2 border-dashed border-slate-300">
             <h3 className="text-[10px] font-black text-indigo-600 uppercase mb-4 tracking-widest text-center">Extra Charges / Fine</h3>
             <div className="flex gap-3 mb-4">
-<<<<<<< HEAD
               <input id="ex_name" type="text" placeholder="Reason (e.g. Fine)" className="flex-1 bg-slate-50 border p-3 rounded-xl outline-none focus:border-indigo-500 font-bold shadow-inner" />
               <input id="ex_amt" type="number" placeholder="Amount" className="w-32 bg-slate-50 border p-3 rounded-xl outline-none focus:border-indigo-500 font-bold shadow-inner" />
               <button type="button" onClick={() => { addExtraCharge(document.getElementById('ex_name').value, document.getElementById('ex_amt').value); document.getElementById('ex_name').value=''; document.getElementById('ex_amt').value=''; }} className="bg-indigo-600 text-white px-5 rounded-xl font-bold active:scale-95 shadow-md"><PlusCircle size={20}/></button>
-=======
-              <input id="ex_name" type="text" placeholder="Reason (e.g. Fine)" className="flex-1 bg-slate-50 border p-3 rounded-xl outline-none focus:border-indigo-500 font-bold" />
-              <input id="ex_amt" type="number" placeholder="Amount" className="w-32 bg-slate-50 border p-3 rounded-xl outline-none focus:border-indigo-500 font-bold" />
-              <button type="button" onClick={() => { addExtraCharge(document.getElementById('ex_name').value, document.getElementById('ex_amt').value); document.getElementById('ex_name').value=''; document.getElementById('ex_amt').value=''; }} className="bg-indigo-600 text-white px-5 rounded-xl font-bold active:scale-95"><PlusCircle size={20}/></button>
->>>>>>> a86c5b55597f50df9bd3a08d2b0769b9cf33db0a
             </div>
             {extraCharges.map(ex => (
               <div key={ex.id} className="flex justify-between items-center bg-amber-50 p-2 px-4 rounded-xl border border-amber-100 mb-2">
@@ -611,19 +527,11 @@ const StudentBilling = () => {
             <div className="space-y-4">
                 <div>
                   <label className="text-[10px] font-black text-amber-600 uppercase px-1">Special Discount</label>
-<<<<<<< HEAD
                   <input type="number" className="w-full bg-amber-50 border-2 border-amber-100 p-4 rounded-2xl text-xl font-black outline-none focus:border-amber-500 shadow-inner" value={discount} onChange={(e) => setDiscount(e.target.value)} placeholder="0" />
                 </div>
                 <div>
                   <label className="text-[10px] font-black text-slate-400 uppercase px-1">Received Amount</label>
                   <input type="number" className="w-full bg-slate-50 border-2 p-5 rounded-2xl text-3xl font-black outline-none focus:border-indigo-600 shadow-inner" value={amountReceived} onChange={(e) => setAmountReceived(e.target.value)} placeholder="0" />
-=======
-                  <input type="number" className="w-full bg-amber-50 border-2 border-amber-100 p-4 rounded-2xl text-xl font-black outline-none focus:border-amber-500" value={discount} onChange={(e) => setDiscount(e.target.value)} placeholder="0" />
-                </div>
-                <div>
-                  <label className="text-[10px] font-black text-slate-400 uppercase px-1">Received Amount</label>
-                  <input type="number" className="w-full bg-slate-50 border-2 p-5 rounded-2xl text-3xl font-black outline-none focus:border-indigo-600" value={amountReceived} onChange={(e) => setAmountReceived(e.target.value)} placeholder="0" />
->>>>>>> a86c5b55597f50df9bd3a08d2b0769b9cf33db0a
                   {!amountReceived && <p className="text-[10px] text-red-500 font-bold mt-1 animate-pulse">* Received amount required</p>}
                 </div>
             </div>
@@ -635,11 +543,7 @@ const StudentBilling = () => {
 
             <button 
               onClick={handleSaveAndPrint} 
-<<<<<<< HEAD
               disabled={isProcessing || !canPay} 
-=======
-              disabled={isProcessing || !amountReceived || Number(amountReceived) < 0 || !isMonthSelected} 
->>>>>>> a86c5b55597f50df9bd3a08d2b0769b9cf33db0a
               className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-6 rounded-2xl font-black flex items-center justify-center gap-3 shadow-xl active:scale-95 disabled:bg-slate-300 disabled:cursor-not-allowed transition-all uppercase tracking-widest border-b-4 border-indigo-900"
             >
               {isProcessing ? <Loader2 className="animate-spin" /> : <Printer size={24} />} SAVE & PRINT ALL

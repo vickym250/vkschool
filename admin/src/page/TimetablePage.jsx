@@ -8,11 +8,7 @@ import { Save, Clock, Printer, RefreshCw, Sparkles, CalendarDays, Timer } from '
 const TimetablePro = () => {
   const [teachers, setTeachers] = useState([]);
   const [periods, setPeriods] = useState([]);
-<<<<<<< HEAD
-  const [dynamicClasses, setDynamicClasses] = useState([]); // 🔥 Firestore se aane wali classes
-=======
   const [dynamicClasses, setDynamicClasses] = useState([]);
->>>>>>> a86c5b55597f50df9bd3a08d2b0769b9cf33db0a
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   
@@ -22,33 +18,11 @@ const TimetablePro = () => {
   const [selectedSession, setSelectedSession] = useState("2025-26"); 
   const [showMagicModal, setShowMagicModal] = useState(false);
   
-<<<<<<< HEAD
-  // Setup State
-=======
   // 🔥 Naya Setup State: Bina purane logic ko distrub kiye
->>>>>>> a86c5b55597f50df9bd3a08d2b0769b9cf33db0a
   const [setup, setSetup] = useState({ 
     total: 8, 
     lunchAt: 4, 
     offAt: 8,
-<<<<<<< HEAD
-    startTime: "08:00",
-    periodDuration: 45,
-    lunchDuration: 30
-  });
-
-  // 🔥 Classes ko sahi sequence mein dikhane ke liye order
-  const classSortOrder = [
-    "Nursery", "LKG", "UKG", 
-    "Class 1", "Class 2", "Class 3", "Class 4", "Class 5", 
-    "Class 6", "Class 7", "Class 8", "Class 9", "Class 10", "Class 11", "Class 12"
-  ];
-
-  useEffect(() => {
-    setLoading(true);
-
-    // 1. 🔥 Fetch Dynamic Classes (Real-time from 'classes' collection)
-=======
     startTime: "08:00", // Default Start Time
     periodDuration: 45,  // Default 45 Mins
     lunchDuration: 30    // Default 30 Mins
@@ -77,48 +51,11 @@ const TimetablePro = () => {
       setTeachers(activeTeachers);
     });
 
->>>>>>> a86c5b55597f50df9bd3a08d2b0769b9cf33db0a
     const unsubClasses = onSnapshot(collection(db, "classes"), (snapshot) => {
-      const classData = snapshot.docs.map(d => d.data().name || d.data().className);
-      
-      // Sorting Logic: classSortOrder ke hisab se sort karega
-      const sortedClasses = classData.sort((a, b) => {
-        const indexA = classSortOrder.indexOf(a);
-        const indexB = classSortOrder.indexOf(b);
-        if (indexA !== -1 && indexB !== -1) return indexA - indexB;
-        return a.localeCompare(b, undefined, { numeric: true });
-      });
-      
-      setDynamicClasses(sortedClasses);
+      const classData = snapshot.docs.map(d => d.data().name);
+      setDynamicClasses(classData.sort((a, b) => a.localeCompare(b, undefined, { numeric: true })));
     });
 
-<<<<<<< HEAD
-    // 2. Fetch Periods
-    const qPeriods = query(collection(db, "timetablePeriods"), where("session", "==", selectedSession));
-    const unsubPeriods = onSnapshot(qPeriods, (snapshot) => {
-      const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-      setPeriods(data.sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true })));
-      setLoading(false);
-    });
-
-    // 3. Fetch Teachers
-    const qTeachers = query(collection(db, "teachers"), where("session", "==", selectedSession));
-    const unsubTeachers = onSnapshot(qTeachers, (snapshot) => {
-      const activeTeachers = snapshot.docs
-        .map(d => ({ id: d.id, ...d.data() }))
-        .filter(t => t.isDeleted !== true); 
-      setTeachers(activeTeachers);
-    });
-
-    return () => { unsubPeriods(); unsubTeachers(); unsubClasses(); };
-  }, [selectedSession]);
-
-  // 🔥 Time Calculation (12-Hour format fix)
-  const calculateTime = (index, currentSetup) => {
-    let [hours, minutes] = currentSetup.startTime.split(':').map(Number);
-    let totalMinutes = hours * 60 + minutes;
-
-=======
     return () => { unsubPeriods(); unsubTeachers(); unsubClasses(); };
   }, [selectedSession]);
 
@@ -127,7 +64,6 @@ const TimetablePro = () => {
     let [hours, minutes] = currentSetup.startTime.split(':').map(Number);
     let totalMinutes = hours * 60 + minutes;
 
->>>>>>> a86c5b55597f50df9bd3a08d2b0769b9cf33db0a
     for (let i = 1; i < index; i++) {
       totalMinutes += Number(currentSetup.periodDuration);
       if (i === Number(currentSetup.lunchAt)) {
@@ -138,13 +74,6 @@ const TimetablePro = () => {
     let newHours = Math.floor(totalMinutes / 60);
     const newMins = totalMinutes % 60;
     const ampm = newHours >= 12 ? 'PM' : 'AM';
-<<<<<<< HEAD
-    newHours = newHours % 12 || 12;
-    return `${newHours}:${newMins.toString().padStart(2, '0')} ${ampm}`;
-  };
-
-  // 🔥 Magic Fill Logic (Uses Dynamic Classes)
-=======
     
     newHours = newHours % 12;
     newHours = newHours ? newHours : 12; // 0 ko 12 mein badle
@@ -152,7 +81,6 @@ const TimetablePro = () => {
     return `${newHours}:${newMins.toString().padStart(2, '0')} ${ampm}`;
   };
 
->>>>>>> a86c5b55597f50df9bd3a08d2b0769b9cf33db0a
   const startMagicGeneration = () => {
     if (!window.confirm(`Generate for ${selectedSession}?`)) return;
     const newGeneratedPeriods = [];
@@ -160,11 +88,7 @@ const TimetablePro = () => {
       let label = `P${i}`;
       let type = 'class';
       let periodInternalName = label; 
-<<<<<<< HEAD
-      let time = calculateTime(i, setup);
-=======
       let time = calculateTime(i, setup); // 🔥 Ab time dynamic calculate hoga
->>>>>>> a86c5b55597f50df9bd3a08d2b0769b9cf33db0a
 
       if (i === Number(setup.lunchAt)) { 
         type = 'break'; 
@@ -174,28 +98,16 @@ const TimetablePro = () => {
         periodInternalName = 'OFF'; 
       }
 
-<<<<<<< HEAD
-      const updatedAssignments = { periodName: periodInternalName };
-=======
       const updatedAssignments = {
         periodName: periodInternalName
       };
->>>>>>> a86c5b55597f50df9bd3a08d2b0769b9cf33db0a
 
       if (type === 'class') {
         let currentPeriodClasses = [...dynamicClasses]; 
         currentPeriodClasses.sort(() => Math.random() - 0.5);
         teachers.forEach((teacher) => {
-<<<<<<< HEAD
-          if (currentPeriodClasses.length > 0) { 
-            updatedAssignments[teacher.id] = currentPeriodClasses.pop(); 
-          } else { 
-            updatedAssignments[teacher.id] = "FREE"; 
-          }
-=======
           if (currentPeriodClasses.length > 0) { updatedAssignments[teacher.id] = currentPeriodClasses.pop(); }
           else { updatedAssignments[teacher.id] = "FREE"; }
->>>>>>> a86c5b55597f50df9bd3a08d2b0769b9cf33db0a
         });
       }
 
@@ -210,10 +122,7 @@ const TimetablePro = () => {
   };
 
   const saveAll = async () => {
-<<<<<<< HEAD
-=======
     if (scrollContainerRef.current) { lastScrollPos.current = scrollContainerRef.current.scrollLeft; }
->>>>>>> a86c5b55597f50df9bd3a08d2b0769b9cf33db0a
     setLoading(true);
     try {
       const batch = writeBatch(db);
@@ -223,24 +132,13 @@ const TimetablePro = () => {
       });
       await batch.commit();
       setIsEditing(false);
-<<<<<<< HEAD
-=======
       setTimeout(() => { if (scrollContainerRef.current) scrollContainerRef.current.scrollLeft = lastScrollPos.current; }, 50);
->>>>>>> a86c5b55597f50df9bd3a08d2b0769b9cf33db0a
       alert(`Saved Successfully!`);
     } catch (err) { alert("Error: " + err.message); }
     finally { setLoading(false); }
   };
 
   const handleAssignmentChange = (periodId, teacherId, className) => {
-<<<<<<< HEAD
-    setPeriods(prev => prev.map(p => {
-      if (p.id === periodId) {
-        return { 
-          ...p, 
-          teacherAssignments: { ...(p.teacherAssignments || {}), [teacherId]: className } 
-        };
-=======
     if (scrollContainerRef.current) { lastScrollPos.current = scrollContainerRef.current.scrollLeft; }
     setPeriods(prev => prev.map(p => {
       if (p.id === periodId) {
@@ -249,7 +147,6 @@ const TimetablePro = () => {
           [teacherId]: className
         };
         return { ...p, teacherAssignments: updatedAssignments };
->>>>>>> a86c5b55597f50df9bd3a08d2b0769b9cf33db0a
       }
       return p;
     }));
@@ -261,9 +158,6 @@ const TimetablePro = () => {
   return (
     <div className="min-h-screen bg-[#f8fafc] p-4 printable-area text-slate-800">
       
-<<<<<<< HEAD
-      {/* --- Magic Modal --- */}
-=======
       <style dangerouslySetInnerHTML={{ __html: `
         @media print {
           @page { size: A4 landscape; margin: 10mm; }
@@ -294,37 +188,10 @@ const TimetablePro = () => {
         }
       `}} />
 
->>>>>>> a86c5b55597f50df9bd3a08d2b0769b9cf33db0a
       {showMagicModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[2000] flex items-center justify-center p-4 no-print">
           <div className="bg-white p-6 max-w-md w-full shadow-2xl rounded-3xl">
             <h2 className="text-lg font-black uppercase mb-4 flex items-center gap-2">
-<<<<<<< HEAD
-              <Timer className="text-indigo-600" /> Master Setup
-            </h2>
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase">Start Time</label>
-                  <input type="time" value={setup.startTime} onChange={(e) => setSetup({...setup, startTime: e.target.value})} className="w-full p-3 bg-slate-50 rounded-xl font-bold border border-slate-100" />
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase">Periods</label>
-                  <input type="number" value={setup.total} onChange={(e) => setSetup({...setup, total: e.target.value})} className="w-full p-3 bg-slate-50 rounded-xl font-bold border border-slate-100" />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-[10px] font-bold text-indigo-400 uppercase">Period (Min)</label>
-                  <input type="number" value={setup.periodDuration} onChange={(e) => setSetup({...setup, periodDuration: e.target.value})} className="w-full p-3 bg-indigo-50/50 rounded-xl font-bold text-indigo-700 border border-indigo-100" />
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold text-orange-400 uppercase">Lunch (Min)</label>
-                  <input type="number" value={setup.lunchDuration} onChange={(e) => setSetup({...setup, lunchDuration: e.target.value})} className="w-full p-3 bg-orange-50/50 rounded-xl font-bold text-orange-700 border border-orange-100" />
-                </div>
-              </div>
-            </div>
-=======
               <Timer className="text-indigo-600" /> Setup Timetable
             </h2>
             <div className="space-y-4">
@@ -365,7 +232,6 @@ const TimetablePro = () => {
               </div>
             </div>
 
->>>>>>> a86c5b55597f50df9bd3a08d2b0769b9cf33db0a
             <div className="flex gap-2 mt-6">
               <button onClick={() => setShowMagicModal(false)} className="flex-1 py-3 font-black text-xs uppercase text-slate-400">Cancel</button>
               <button onClick={startMagicGeneration} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-black text-xs uppercase shadow-lg shadow-indigo-200">Magic Fill</button>
@@ -374,26 +240,13 @@ const TimetablePro = () => {
         </div>
       )}
 
-<<<<<<< HEAD
-      {/* --- Main Board --- */}
-      <div id="print-area" className="w-full mx-auto bg-white shadow-2xl overflow-hidden border border-slate-200">
-=======
       <div id="print-area" className="w-full mx-auto bg-white shadow-2xl  overflow-hidden border border-slate-200">
->>>>>>> a86c5b55597f50df9bd3a08d2b0769b9cf33db0a
         <div className="bg-slate-900 p-5 flex justify-between items-center no-print">
           <div className="flex items-center gap-4">
             <div className="bg-indigo-600 p-3 rounded-2xl text-white shadow-lg"><Clock size={24}/></div>
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <CalendarDays size={14} className="text-indigo-400"/>
-<<<<<<< HEAD
-                <select value={selectedSession} onChange={(e) => setSelectedSession(e.target.value)} className="bg-transparent text-indigo-400 font-black text-[11px] uppercase outline-none">
-                  <option value="2025-26">2025-26</option>
-                  <option value="2026-27">2026-27</option>
-                </select>
-              </div>
-              <h1 className="text-white font-black text-lg tracking-widest uppercase leading-none">Teacher Master Schedule</h1>
-=======
                 <select value={selectedSession} onChange={(e) => setSelectedSession(e.target.value)} className="bg-transparent text-indigo-400 font-black text-[11px] uppercase outline-none cursor-pointer">
                   <option value="2024-25" className="text-slate-900">2024-25</option>
                   <option value="2025-26" className="text-slate-900">2025-26</option>
@@ -401,7 +254,6 @@ const TimetablePro = () => {
                 </select>
               </div>
               <h1 className="text-white font-black text-lg tracking-widest uppercase leading-none">Master Schedule</h1>
->>>>>>> a86c5b55597f50df9bd3a08d2b0769b9cf33db0a
             </div>
           </div>
 
@@ -428,17 +280,11 @@ const TimetablePro = () => {
                   <span className="text-[10px] font-black uppercase text-slate-400 italic">Faculty ({teachers.length})</span>
                 </th>
                 {periods.map((p) => (
-<<<<<<< HEAD
-                  <th key={p.id} className="p-4 border min-w-[150px]">
-                    <div className="flex flex-col items-center">
-                      <span className="font-black text-[14px] uppercase text-slate-800 leading-none">{p.label}</span>
-=======
                   <th key={p.id} className={`p-4 border min-w-[150px] ${p.type === 'break' ? 'bg-orange-50/50' : p.type === 'off' ? 'bg-red-50/50' : ''}`}>
                     <div className="flex flex-col items-center">
                       <span className="font-black text-[14px] uppercase text-slate-800 leading-none">
                         {p.label}
                       </span>
->>>>>>> a86c5b55597f50df9bd3a08d2b0769b9cf33db0a
                       <span className="text-[10px] font-bold text-indigo-500 mt-1">{p.time}</span>
                     </div>
                   </th>
@@ -454,11 +300,7 @@ const TimetablePro = () => {
                   </td>
                   
                   {periods.map((p) => (
-<<<<<<< HEAD
-                    <td key={p.id} className={`p-4 border text-center ${p.type === 'break' ? 'bg-orange-50/30' : p.type === 'off' ? 'bg-red-50/30' : ''}`}>
-=======
                     <td key={p.id} className={`p-4 border text-center transition-all ${p.type === 'break' ? 'bg-orange-50/30' : p.type === 'off' ? 'bg-red-50/30' : ''}`}>
->>>>>>> a86c5b55597f50df9bd3a08d2b0769b9cf33db0a
                       {p.type === 'break' ? (
                         <span className="text-[11px] font-black text-orange-700 uppercase bg-orange-100 px-3 py-1.5 rounded-xl">LUNCH</span>
                       ) : p.type === 'off' ? (
@@ -471,10 +313,6 @@ const TimetablePro = () => {
                         >
                           <option value="">—</option>
                           <option value="FREE">FREE</option>
-<<<<<<< HEAD
-                          {/* 🔥 Dynamic Classes list from Firestore */}
-=======
->>>>>>> a86c5b55597f50df9bd3a08d2b0769b9cf33db0a
                           {dynamicClasses.map(c => <option key={c} value={c}>{c}</option>)}
                         </select>
                       )}
@@ -486,8 +324,6 @@ const TimetablePro = () => {
           </table>
         </div>
       </div>
-<<<<<<< HEAD
-=======
       
       {!isEditing && (
         <div className="mt-6 flex justify-center no-print">
@@ -499,7 +335,6 @@ const TimetablePro = () => {
             </div>
         </div>
       )}
->>>>>>> a86c5b55597f50df9bd3a08d2b0769b9cf33db0a
     </div>
   );
 };

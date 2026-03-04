@@ -48,13 +48,9 @@ export default function AllReport() {
           results.push({ id: doc.id, ...doc.data() });
         });
 
-<<<<<<< HEAD
         // SORTING BY SR NO (Numeric Sort)
         results.sort((a, b) => (parseInt(a.srNo) || 999) - (parseInt(b.srNo) || 999));
         
-=======
-        results.sort((a, b) => Number(a.roll) - Number(b.roll));
->>>>>>> a86c5b55597f50df9bd3a08d2b0769b9cf33db0a
         if (isMounted) setData(results);
       } catch (error) {
         console.error("Error fetching data:", error);
@@ -66,14 +62,8 @@ export default function AllReport() {
     return () => { isMounted = false; };
   }, [className, session]);
 
-<<<<<<< HEAD
   const handlePrint = () => {
     window.print();
-=======
-  // --- FASTER MOBILE PRINT LOGIC ---
-  const handlePrint = () => {
-    window.print(); // Direct print, no new tab delay
->>>>>>> a86c5b55597f50df9bd3a08d2b0769b9cf33db0a
   };
 
   const onClose = () => navigate(-1);
@@ -88,15 +78,8 @@ export default function AllReport() {
   return (
     <div className="min-h-screen bg-zinc-800 p-4 md:p-10 overflow-y-auto">
       
-<<<<<<< HEAD
       <style dangerouslySetInnerHTML={{ __html: `
         @media print {
-=======
-      {/* --- INJECTING PRINT CSS (Fixes Blank Page & Mobile Speed) --- */}
-      <style dangerouslySetInnerHTML={{ __html: `
-        @media print {
-          /* Hide everything except the printable area */
->>>>>>> a86c5b55597f50df9bd3a08d2b0769b9cf33db0a
           body * { visibility: hidden !important; }
           #printable-area, #printable-area * { visibility: visible !important; }
           #printable-area { 
@@ -107,13 +90,7 @@ export default function AllReport() {
             padding: 0 !important;
             margin: 0 !important;
           }
-<<<<<<< HEAD
           @page { size: A4 portrait; margin: 0; }
-=======
-          
-          @page { size: A4 portrait; margin: 0; }
-          
->>>>>>> a86c5b55597f50df9bd3a08d2b0769b9cf33db0a
           .page-break { 
             width: 210mm !important; 
             height: 297mm !important; 
@@ -138,10 +115,6 @@ export default function AllReport() {
         }
       `}} />
 
-<<<<<<< HEAD
-=======
-      {/* FLOATING BUTTONS (Added 'no-print' class for safety) */}
->>>>>>> a86c5b55597f50df9bd3a08d2b0769b9cf33db0a
       <div className="fixed bottom-10 right-10 flex flex-col gap-4 z-[1000] no-print">
         <button onClick={handlePrint} className="px-8 py-3 bg-emerald-600 text-white font-black rounded-full shadow-2xl border-2 border-white/20 hover:scale-105 transition-all">
           🖨️ PRINT ALL ({data.length})
@@ -163,11 +136,7 @@ export default function AllReport() {
             <div key={student.id || idx} className="page-break bg-white shadow-2xl flex flex-col text-slate-900">
               <div className="main-border">
                 {/* HEADER */}
-<<<<<<< HEAD
                 <div className="flex items-center justify-between border-b-4 border-blue-900 pb-4 mb-6 relative">
-=======
-                <div className="flex items-center justify-between border-b-4 border-blue-900 pb-4 mb-6">
->>>>>>> a86c5b55597f50df9bd3a08d2b0769b9cf33db0a
                   <div className="w-20 h-20 flex-shrink-0">
                     <img src={school.logoUrl} alt="Logo" className="w-full h-full object-contain" />
                   </div>
@@ -181,13 +150,10 @@ export default function AllReport() {
                     <span className="text-[10px] font-bold text-gray-400 block uppercase italic">Session</span>
                     <span className="text-lg font-black text-blue-900">{student.session}</span>
                   </div>
-<<<<<<< HEAD
                   {/* SR NO BOX */}
                   <div className="absolute top-0 right-0">
                     <p className="text-[10px] font-black text-[#1e3a8a] border border-[#1e3a8a] px-2 py-0.5 bg-slate-50">SR. NO: {student.srNo || '---'}</p>
                   </div>
-=======
->>>>>>> a86c5b55597f50df9bd3a08d2b0769b9cf33db0a
                 </div>
 
                 {/* STUDENT INFO */}
@@ -202,13 +168,8 @@ export default function AllReport() {
                       <span className="uppercase font-black text-gray-800">{student.name}</span>
                     </div>
                     <div className="flex border-b border-gray-100 py-1">
-<<<<<<< HEAD
                       <span className="w-32 font-bold text-blue-900 uppercase tracking-tighter">Exam Roll No:</span>
                       <span className="font-mono font-black text-blue-900 text-lg">{student.examRollNo || '---'}</span>
-=======
-                      <span className="w-32 font-bold text-blue-900">ROLL NO:</span>
-                      <span className="font-mono font-black text-blue-900 text-lg">{student.roll}</span>
->>>>>>> a86c5b55597f50df9bd3a08d2b0769b9cf33db0a
                     </div>
                     <div className="flex border-b border-gray-100 py-1">
                       <span className="w-32 font-bold text-blue-900">CLASS:</span>
@@ -249,11 +210,7 @@ export default function AllReport() {
                     ))}
                     {Array.from({ length: Math.max(0, TABLE_ROWS_COUNT - rows.length) }).map((_, i) => (
                       <tr key={`blank-${i}`} className="h-8">
-<<<<<<< HEAD
                         <td className="border">&nbsp;</td><td className="border"></td><td className="border"></td><td className="border"></td>
-=======
-                        <td>&nbsp;</td><td></td><td></td><td></td>
->>>>>>> a86c5b55597f50df9bd3a08d2b0769b9cf33db0a
                       </tr>
                     ))}
                   </tbody>
@@ -270,11 +227,7 @@ export default function AllReport() {
                 <div className="grid grid-cols-3 border-2 border-blue-900 rounded-lg overflow-hidden my-6 text-center">
                   <div className="p-2 border-r-2 border-blue-900">
                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Percentage</p>
-<<<<<<< HEAD
    r f                 <p className="text-lg font-black text-blue-900">{percent}%</p>
-=======
-                    <p className="text-lg font-black text-blue-900">{percent}%</p>
->>>>>>> a86c5b55597f50df9bd3a08d2b0769b9cf33db0a
                   </div>
                   <div className="p-2 border-r-2 border-blue-900 bg-blue-50">
                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Grade</p>
