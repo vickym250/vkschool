@@ -23,8 +23,10 @@ export default function StudentList() {
   const CURRENT_ACTIVE_SESSION = "2025-26";
   const sessions = ["2024-25", "2025-26", "2026-27"];
   const [session, setSession] = useState("2025-26");
-  const schoolClasses = ["LKG", "UKG", ...Array.from({ length: 12 }, (_, i) => `Class ${i + 1}`)];
-  const [className, setClassName] = useState("Class 10");
+  
+  // Dynamic Classes State
+  const [schoolClasses, setSchoolClasses] = useState([]);
+  const [className, setClassName] = useState("");
 
   const [open, setOpen] = useState(false);
   const [openRe, setOpenRe] = useState(false);
@@ -35,9 +37,28 @@ export default function StudentList() {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [rowsToShow, setRowsToShow] = useState(5);
+  const [rowsToShow, setRowsToShow] = useState(10);
 
+  // 1. Fetch Classes from Database (As per your screenshot field: 'name')
   useEffect(() => {
+    const q = query(collection(db, "classes")); 
+    const unsubClasses = onSnapshot(q, (snap) => {
+      const classList = snap.docs.map(doc => doc.data().name).filter(Boolean);
+      // Alphabetical sort (Class 1, Class 10, Class 2 logic handle karne ke liye)
+      const sortedClasses = classList.sort((a, b) => 
+        a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })
+      );
+      setSchoolClasses(sortedClasses);
+      if (sortedClasses.length > 0 && !className) {
+        setClassName(sortedClasses[0]);
+      }
+    });
+    return () => unsubClasses();
+  }, []);
+
+  // 2. Fetch Students
+  useEffect(() => {
+    if (!className) return;
     setLoading(true);
     const q = query(
       collection(db, "students"), 
@@ -60,23 +81,26 @@ export default function StudentList() {
     return () => unsub();
   }, [session, className]);
 
+  // 3. Serial Wise Sorting (By Roll Number)
   const filteredStudents = students
     .filter((s) => {
       const matchSearch = s.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         s.rollNumber?.toString().includes(searchTerm);
       return matchSearch;
     })
-    .sort((a, b) => parseInt(a.rollNumber || 0) - parseInt(b.rollNumber || 0));
+    .sort((a, b) => {
+      const rollA = parseInt(a.rollNumber) || 0;
+      const rollB = parseInt(b.rollNumber) || 0;
+      return rollA - rollB; // Chote se bada (1, 2, 3...)
+    });
 
   const displayedStudents = searchTerm 
     ? filteredStudents 
     : filteredStudents.slice(0, rowsToShow);
 
-  // --- Print Logic ---
   const handlePrint = () => {
     const printContent = document.getElementById("printableTable");
     const newWindow = window.open("", "_blank");
-    
     newWindow.document.write(`
       <html>
         <head>
@@ -86,40 +110,15 @@ export default function StudentList() {
             @media print {
               .no-print { display: none !important; }
               @page { size: A4 landscape; margin: 10mm; }
-              table { width: 100%; border-collapse: collapse; table-layout: auto; }
-              th, td { 
-                border: 1px solid #000 !important; 
-                padding: 6px !important; 
-                text-align: left; 
-                font-size: 11px; 
-                word-wrap: break-word; 
-                white-space: normal !important; /* Address wrap karne ke liye */
-              }
-              .address-cell { 
-                max-width: none !important; 
-                overflow: visible !important; 
-                text-overflow: clip !important; 
-                white-space: normal !important; 
-              }
-              th { background-color: #f3f4f6 !important; -webkit-print-color-adjust: exact; }
-              img { width: 35px; height: 35px; border-radius: 50%; }
+              table { width: 100%; border-collapse: collapse; }
+              th, td { border: 1px solid #000 !important; padding: 4px !important; font-size: 10px; }
             }
           </style>
         </head>
         <body>
-          <div class="p-4">
-            <h2 class="text-xl font-bold text-center mb-1">STUDENT LIST</h2>
-            <p class="text-center mb-4 text-sm font-semibold">CLASS: ${className} | SESSION: ${session}</p>
-            ${printContent.innerHTML}
-          </div>
-          <script>
-            window.onload = function() {
-              setTimeout(() => {
-                window.print();
-                window.close();
-              }, 800);
-            };
-          </script>
+          <h2 class="text-center font-bold text-lg mb-2 uppercase">Student List - ${className} (${session})</h2>
+          ${printContent.innerHTML}
+          <script>window.onload = () => { window.print(); window.close(); }</script>
         </body>
       </html>
     `);
@@ -144,92 +143,100 @@ export default function StudentList() {
   };
 
   return (
-    <div className="p-4 md:p-6 bg-white min-h-screen font-sans">
-      <div className={`max-w-[1400px] mx-auto ${(open || openRe || openDetails) ? "blur-md pointer-events-none" : ""}`}>
+    <div className="p-2 md:p-6 bg-slate-50 min-h-screen font-sans">
+      <div className={`max-w-[1600px] mx-auto md:scale-[0.97] origin-top transition-transform ${(open || openRe || openDetails) ? "blur-md pointer-events-none" : ""}`}>
 
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-black text-gray-800">Student List ({session})</h2>
+        <div className="flex justify-between items-center mb-4 bg-white p-3 rounded-lg shadow-sm border border-slate-200">
+          <h2 className="text-lg md:text-xl font-black text-slate-800 tracking-tight">Student List</h2>
           <button 
             onClick={handlePrint}
-            className="bg-gray-800 text-white px-5 py-1.5 rounded-md font-bold text-sm shadow hover:bg-black uppercase"
+            className="bg-slate-800 text-white px-4 py-1.5 rounded-md font-bold text-xs md:text-sm hover:bg-black uppercase"
           >
             Print List
           </button>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 mb-6">
-          <select value={session} onChange={(e) => { setSession(e.target.value); setRowsToShow(5); }} className="border border-gray-300 rounded-md px-3 py-1.5 text-sm font-bold bg-white outline-none">
+        <div className="flex flex-wrap items-center gap-2 mb-4">
+          <select value={session} onChange={(e) => { setSession(e.target.value); setRowsToShow(10); }} className="border border-slate-300 rounded-md px-2 py-1.5 text-xs md:text-sm font-bold bg-white outline-none focus:ring-2 focus:ring-indigo-500/20">
             {sessions.map(s => <option key={s}>{s}</option>)}
           </select>
-          <select value={className} onChange={(e) => { setClassName(e.target.value); setRowsToShow(5); }} className="border border-gray-300 rounded-md px-3 py-1.5 text-sm font-bold bg-white outline-none">
-            {schoolClasses.map(cls => <option key={cls} value={cls}>{cls}</option>)}
+          
+          <select value={className} onChange={(e) => { setClassName(e.target.value); setRowsToShow(10); }} className="border border-slate-300 rounded-md px-2 py-1.5 text-xs md:text-sm font-bold bg-white outline-none focus:ring-2 focus:ring-indigo-500/20">
+            {schoolClasses.length > 0 ? (
+              schoolClasses.map(cls => <option key={cls} value={cls}>{cls}</option>)
+            ) : (
+              <option>Loading...</option>
+            )}
           </select>
+
           <div className="flex-grow">
-            <input type="text" placeholder="Search by name or roll..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full border border-gray-300 rounded-md px-4 py-1.5 text-sm outline-none" />
+            <input type="text" placeholder="Search by name or roll..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full border border-slate-300 rounded-md px-3 py-1.5 text-xs md:text-sm outline-none shadow-sm focus:border-indigo-500" />
           </div>
-          <button onClick={() => { setEditStudent(null); setOpen(true); }} className="bg-[#FFC107] text-black px-5 py-1.5 rounded-md font-bold text-sm shadow hover:bg-amber-500 uppercase">Add Student</button>
+          
+          <button onClick={() => { setEditStudent(null); setOpen(true); }} className="bg-[#FFC107] text-black px-4 py-1.5 rounded-md font-bold text-xs md:text-sm shadow-sm hover:bg-amber-500 uppercase">
+            + Add Student
+          </button>
         </div>
 
-        <div id="printableTable" className="border border-gray-200 rounded-lg overflow-x-auto shadow-sm bg-white">
-          <table className="w-full text-left min-w-[1000px]">
-            <thead className="bg-[#E2E8F0] text-[#475569] text-[12px] font-bold uppercase tracking-tight">
+        <div id="printableTable" className="border border-slate-200 rounded-xl overflow-x-auto shadow-lg bg-white">
+          <table className="w-full text-left min-w-[1100px]">
+            <thead className="bg-slate-700 text-white text-[10px] md:text-[11px] font-bold uppercase tracking-wider">
               <tr>
-                <th className="px-4 py-4 w-20">Photo</th>
-                <th className="px-4 py-4 text-center w-20">Registion No</th>
-                <th className="px-4 py-4 text-center w-20">Roll</th>
-                <th className="px-4 py-4">Name</th>
-                <th className="px-4 py-4">Father Name</th>
-                <th className="px-4 py-4">Mother Name</th>
-                <th className="px-4 py-4">Aadhar</th>
-                <th className="px-4 py-4">Category</th>
-                <th className="px-4 py-4">Gender</th>
-                <th className="px-4 py-4">Phone</th>
-                <th className="px-4 py-4">Address</th>
-                <th className="px-4 py-4 text-center no-print">Action</th>
+                <th className="px-3 py-3 w-16">Photo</th>
+                <th className="px-3 py-3 text-center w-20">Reg No</th>
+                <th className="px-3 py-3 text-center w-16">Roll</th>
+                <th className="px-3 py-3">Student Name</th>
+                <th className="px-3 py-3">Father Name</th>
+                <th className="px-3 py-3">Mother Name</th>
+                <th className="px-3 py-3">Aadhar</th>
+                <th className="px-3 py-3">Category</th>
+                <th className="px-3 py-3">Gender</th>
+                <th className="px-3 py-3">DOB</th>
+                <th className="px-3 py-3">Phone</th>
+                <th className="px-3 py-3">Address</th>
+                <th className="px-3 py-3 text-center no-print">Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-slate-100">
               {loading ? (
-                <tr><td colSpan="9" className="text-center py-10">Loading...</td></tr>
+                <tr><td colSpan="9" className="text-center py-20 font-bold text-slate-400">Loading Data...</td></tr>
               ) : displayedStudents.length === 0 ? (
-                <tr><td colSpan="9" className="text-center py-10 text-gray-400">No students found.</td></tr>
+                <tr><td colSpan="9" className="text-center py-20 text-slate-400 italic">No students found in this class.</td></tr>
               ) : (
                 displayedStudents.map((s) => (
-                  <tr key={s.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-2 text-center">
-                      <div className="w-10 h-10 rounded-full overflow-hidden border border-gray-200 bg-gray-50 mx-auto">
-                        {s.photoURL ? <img src={s.photoURL} className="w-full h-full object-cover" alt="" /> : <span className="flex items-center justify-center h-full text-gray-400 font-bold">{s.name?.[0]}</span>}
+                  <tr key={s.id} className="hover:bg-indigo-50/50 transition-colors group">
+                    <td className="px-3 py-1.5 text-center">
+                      <div className="w-8 h-8 md:w-9 md:h-9 rounded-full overflow-hidden border border-slate-200 bg-slate-50 mx-auto shadow-sm">
+                        {s.photoURL ? <img src={s.photoURL} className="w-full h-full object-cover" alt="" /> : <span className="flex items-center justify-center h-full text-indigo-400 font-bold text-xs">{s.name?.[0]}</span>}
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-sm font-bold text-gray-500 text-center">{s.regNo}</td>
-                    <td className="px-4 py-3 text-sm font-bold text-gray-500 text-center">{s.rollNumber}</td>
-                    <td className="px-4 py-3 text-xs font-bold text-gray-800 uppercase">{s.name}</td>
-                    <td className="px-4 py-3 text-sm text-gray-500">{s.fatherName}</td>
-                    <td className="px-4 py-3 text-sm text-gray-500">{s.motherName || ""}</td>
-                    <td className="px-4 py-3 text-sm text-gray-500">{s.aadharNumber || " "}</td>
-                    <td className="px-4 py-3 text-sm text-gray-500">{s.category || ""}</td>
-                    <td className="px-4 py-3 text-sm text-gray-500">{s.gender || ""}</td>
-                    <td className="px-4 py-3 text-sm text-gray-500">{s.phone || " "}</td>
-                    {/* Address cell updated with address-cell class */}
-                    <td className="px-4 py-3 text-xs text-gray-500 address-cell">{s.address || ""}</td>
-                    <td className="px-4 py-3 no-print">
-                      <div className="flex items-center justify-center gap-1.5">
-                        <button onClick={() => handleOpenDetails(s)} className="bg-gray-600 text-white px-3 py-1 rounded text-[11px] font-bold hover:bg-gray-700 uppercase">Details</button>
-                        <button onClick={() => navigator(`/feesrec/${s.id}`)} className="bg-[#2563EB] text-white px-3 py-1 rounded text-[11px] font-bold hover:bg-blue-700 uppercase">Fees</button>
+                    <td className="px-3 py-2 text-[11px] md:text-xs font-bold text-slate-500 text-center">{s.regNo}</td>
+                    <td className="px-3 py-2 text-center">
+                      <span className="bg-slate-100 text-indigo-700 px-2 py-0.5 rounded text-[11px] md:text-xs font-black">{s.rollNumber}</span>
+                    </td>
+                    <td className="px-3 py-2 text-[11px] md:text-[12px] font-black text-slate-800 uppercase">{s.name}</td>
+                    <td className="px-3 py-2 text-[11px] md:text-xs text-slate-600 font-medium">{s.fatherName}</td>
+                    <td className="px-3 py-2 text-[11px] md:text-xs text-slate-600 font-medium">{s.motherName}</td>
+                    <td className="px-3 py-2 text-[11px] md:text-xs text-slate-500 font-mono">{s.aadharNumber || "—"}</td>
+                    
+                    <td className="px-3 py-2 text-[11px] md:text-xs text-slate-500 font-mono">{s.category || "—"}</td>
+                    <td className="px-3 py-2 text-[11px] md:text-xs text-slate-500 font-mono">{s.gender || "—"}</td>
+                    <td className="px-3 py-2 text-[11px] md:text-xs text-slate-500 font-mono">{s.dob || "—"}</td>
+                    <td className="px-3 py-2 text-[11px] md:text-xs text-indigo-600 font-bold">{s.phone || "—"}</td>
+                    <td className="px-3 py-2 text-[10px] text-slate-400 leading-tight max-w-[150px] truncate" title={s.address}>{s.address || "—"}</td>
+                    <td className="px-3 py-2 no-print">
+                      <div className="flex items-center justify-center gap-1">
+                        <button onClick={() => handleOpenDetails(s)} className="bg-slate-100 text-slate-700 px-2 py-1 rounded text-[9px] font-black hover:bg-slate-200 uppercase">Detail</button>
+                        <button onClick={() => navigator(`/feesrec/${s.id}`)} className="bg-indigo-600 text-white px-2 py-1 rounded text-[9px] font-black hover:bg-indigo-700 uppercase">Fee</button>
+                        
                         {s.session === CURRENT_ACTIVE_SESSION ? (
-                          <button onClick={() => { setEditStudent(s); setOpen(true); }} className="bg-[#FBBF24] text-white px-3 py-1 rounded text-[11px] font-bold hover:bg-amber-500 uppercase">Edit</button>
+                          <button onClick={() => { setEditStudent(s); setOpen(true); }} className="bg-amber-400 text-white px-2 py-1 rounded text-[9px] font-black hover:bg-amber-500 uppercase">Edit</button>
                         ) : (
-                          <>
-                            {s.status === "promoted" || s.isPromoted ? (
-                              <button disabled className="bg-gray-200 text-gray-500 px-2 py-1 rounded text-[11px] font-bold uppercase cursor-not-allowed">Completed ✅</button>
-                            ) : (
-                              <button onClick={() => handleReAdmission(s)} className="bg-emerald-600 text-white px-2 py-1 rounded text-[11px] font-bold hover:bg-emerald-700 uppercase">Re-Admit</button>
-                            )}
-                            <button onClick={() => navigator(`/tc/${s.id}`)} className="bg-red-600 text-white px-2 py-1 rounded text-[11px] font-bold hover:bg-red-700 uppercase">TC</button>
-                          </>
+                          <button onClick={() => handleReAdmission(s)} className="bg-emerald-600 text-white px-2 py-1 rounded text-[9px] font-black hover:bg-emerald-700 uppercase">Re-Admit</button>
                         )}
-                        <button onClick={() => handleDelete(s.id)} className="bg-[#EF4444] text-white px-3 py-1 rounded text-[11px] font-bold hover:bg-red-600 uppercase">Delete</button>
-                        <button onClick={() => navigator(`/idcard/${s.id}`)} className="bg-white text-blue-600 border border-blue-600 px-3 py-1 rounded text-[11px] font-bold hover:bg-blue-50 uppercase tracking-tighter">IdCard</button>
+                        
+                        <button onClick={() => handleDelete(s.id)} className="bg-red-500 text-white px-2 py-1 rounded text-[9px] font-black hover:bg-red-600 uppercase">Del</button>
+                        <button onClick={() => navigator(`/idcard/${s.id}`)} className="bg-white text-indigo-600 border border-indigo-600 px-2 py-1 rounded text-[9px] font-black hover:bg-indigo-50 uppercase tracking-tighter">ID</button>
                       </div>
                     </td>
                   </tr>
@@ -241,8 +248,8 @@ export default function StudentList() {
 
         {!loading && !searchTerm && filteredStudents.length > rowsToShow && (
           <div className="mt-6 flex justify-center pb-10 no-print">
-            <button onClick={() => setRowsToShow(prev => prev + 10)} className="px-8 py-2 bg-indigo-600 text-white text-sm font-bold rounded-full hover:bg-indigo-700 transition-all shadow-lg uppercase tracking-wide">
-              Show More Students ({filteredStudents.length - rowsToShow} remaining)
+            <button onClick={() => setRowsToShow(prev => prev + 20)} className="px-8 py-2 bg-indigo-600 text-white text-xs font-black rounded-full hover:bg-indigo-700 transition-all shadow-md uppercase tracking-wider">
+              Show More Students
             </button>
           </div>
         )}

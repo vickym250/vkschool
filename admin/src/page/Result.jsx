@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { db } from "../firebase";
 import { 
   collection, getDocs, query, where, serverTimestamp,
-  doc, deleteDoc, getDoc, runTransaction 
+  doc, deleteDoc, getDoc, runTransaction, onSnapshot
 } from "firebase/firestore";
 import toast, { Toaster } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
@@ -32,7 +32,8 @@ const ReportCardModal = ({ data, onClose }) => {
 
   useEffect(() => {
     if (data?.exam === "Annual" && data?.studentId) {
-      navigate(`/marksheet/${data.studentId}`, { replace: true });
+      // Session ko bhi URL mein pass kar rahe hain taaki MarksSheet page sahi se filter kar sake
+      navigate(`/marksheet/${data.studentId}/${data.session}`, { replace: true });
     }
   }, [data, navigate]);
 
@@ -45,7 +46,7 @@ const ReportCardModal = ({ data, onClose }) => {
   const grade = Number(percent) >= 33 ? "PASS" : "FAIL";
 
   return (
-    <div className="fixed inset-0 bg-black/90 z-[999] flex justify-center items-start overflow-y-auto p-2 md:p-10 text-slate-900">
+    <div className="fixed inset-0 bg-black/90 z-[999] flex justify-center items-start overflow-y-auto p-2 md:p-10 text-slate-900 uppercase">
       <div id="printable-area" className="relative bg-white w-full max-w-[850px] border-[6px] md:border-[12px] border-double border-blue-900 p-4 md:p-10 font-serif shadow-2xl my-4 md:my-10">
         <div className="absolute -top-10 md:-top-14 right-0 flex gap-2 no-print">
           <button onClick={() => window.print()} className="px-5 py-2 bg-indigo-600 text-white text-xs font-black rounded-full shadow-xl">🖨️ PRINT</button>
@@ -70,7 +71,7 @@ const ReportCardModal = ({ data, onClose }) => {
           <div className="flex-1 grid grid-cols-1 gap-y-1.5">
             {[
               { label: "STUDENT NAME", value: data.name, bold: true },
-              { label: "EXAM ROLL NO", value: data.examRollNo }, // Updated key
+              { label: "EXAM ROLL NO", value: data.examRollNo },
               { label: "REG NO.", value: data.regNo || "N/A" },
               { label: "CLASS", value: data.className },
               { label: "FATHER'S NAME", value: data.fatherName || "N/A" },
@@ -175,6 +176,11 @@ export default function FinalResultPage() {
   const examTypes = ["Quarterly", "Half-Yearly", "Annual"];
   const [showDropdown, setShowDropdown] = useState(false);
 
+  // --- MAGIC FEATURES STATES ---
+  const [globalMax, setGlobalMax] = useState("100");
+  const [magicMin, setMagicMin] = useState("50");
+  const [magicMax, setMagicMax] = useState("90");
+
   useEffect(() => {
     const fetchMasterData = async () => {
       try {
@@ -222,9 +228,33 @@ export default function FinalResultPage() {
     };
     fetchStudents();
     if (!editingId && subjectMaster[cls]) {
-      setRows(subjectMaster[cls].map(sub => ({ subject: sub, total: "100", marks: "" })));
+      setRows(subjectMaster[cls].map(sub => ({ subject: sub, total: globalMax, marks: "" })));
     }
   }, [cls, subjectMaster, editingId, session]);
+
+  const applyGlobalMax = (val) => {
+    setGlobalMax(val);
+    setRows(rows.map(r => ({ ...r, total: val })));
+  };
+
+  const magicFillMarks = () => {
+    const min = parseInt(magicMin);
+    const max = parseInt(magicMax);
+    if (isNaN(min) || isNaN(max) || min > max) return toast.error("Check Min/Max Range!");
+    
+    setRows(rows.map(r => ({ ...r, marks: (Math.floor(Math.random() * (max - min + 1)) + min).toString() })));
+    toast.success(`Magic Fill Applied!`);
+  };
+
+  // --- PRINT ALL LOGIC ---
+  const handlePrintAll = () => {
+    if(filterExam === "Annual") {
+        // Space ko hatakar class pass kar rahe hain URL me
+        navigate(`/marksheet/${filterClass.replace(/\s+/g, '')}/${session}`);
+    } else {
+        toast.error("Bulk Print sirf Annual exam ke liye hai.");
+    }
+  };
 
   const handleRowChange = (index, field, value) => {
     const newRows = [...rows];
@@ -232,13 +262,8 @@ export default function FinalResultPage() {
     setRows(newRows);
   };
 
-  /* ==========================================
-     SAVE RESULT WITH ATOMIC SR. NO & EXAMROLLNO
-     ========================================== */
   const saveResult = async () => {
     if (!selectedStudentId) return toast.error("Student select karo!");
-    
-    // Check if result already exists for this exam
     const isAlreadyDone = resultList.some(res => String(res.studentId) === String(selectedStudentId) && res.exam === exam && res.session === session);
     if (!editingId && isAlreadyDone) return toast.error("Result already exists!");
 
@@ -253,13 +278,10 @@ export default function FinalResultPage() {
 
       await runTransaction(db, async (transaction) => {
         let finalSrNo;
-
-        // Generating sequential SR. NO only for NEW records
         if (!editingId) {
           const counterId = `counter_${cls}_${exam}_${session}`.replace(/\s+/g, "");
           const counterRef = doc(db, "counters", counterId);
           const counterSnap = await transaction.get(counterRef);
-
           if (!counterSnap.exists()) {
             finalSrNo = 1;
             transaction.set(counterRef, { current: 1 });
@@ -270,13 +292,12 @@ export default function FinalResultPage() {
         }
 
         const resultDocRef = editingId ? doc(db, "examResults", editingId) : doc(collection(db, "examResults"));
-        
         const payload = {
           session, 
           studentId: selectedStudentId, 
           name: student?.name || name,
           className: cls, 
-          examRollNo: student?.examRollNo || "", // UPDATED FIELD NAME
+          examRollNo: student?.examRollNo || "",
           regNo: student?.regNo || "",
           fatherName: student?.fatherName || "", 
           motherName: student?.motherName || "",
@@ -286,9 +307,8 @@ export default function FinalResultPage() {
           updatedAt: serverTimestamp()
         };
 
-        if (editingId) {
-          transaction.update(resultDocRef, payload);
-        } else {
+        if (editingId) transaction.update(resultDocRef, payload);
+        else {
           payload.srNo = finalSrNo;
           payload.createdAt = serverTimestamp();
           transaction.set(resultDocRef, payload);
@@ -299,7 +319,7 @@ export default function FinalResultPage() {
       setShowForm(false); setEditingId(null); loadResults();
     } catch (e) { 
       console.error(e);
-      toast.error("Save failed. Try again."); 
+      toast.error("Save failed."); 
     } finally { setLoading(false); }
   };
 
@@ -309,16 +329,22 @@ export default function FinalResultPage() {
       {showModal && <ReportCardModal data={selectedResult} onClose={() => setShowModal(false)} />}
       
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6 bg-white p-6 rounded-[24px] md:rounded-[32px] border shadow-sm">
           <div>
             <h1 className="text-xl md:text-2xl font-black text-slate-800 italic leading-none">Result Dashboard</h1>
-            <p className="text-[10px] text-slate-400 mt-2">SESSION: {session}</p>
+            <div className="flex items-center gap-2 mt-2">
+               <span className="text-[9px] text-slate-400">SESSION:</span>
+               <select value={session} onChange={(e) => setSession(e.target.value)} className="bg-slate-100 px-2 py-1 rounded text-[10px] font-black outline-none border-none">
+                  {availableSessions.map(s => <option key={s} value={s}>{s}</option>)}
+               </select>
+            </div>
           </div>
-          <button onClick={() => { setEditingId(null); setSelectedStudentId(""); setStudentSearch(""); setShowForm(true); }} className="bg-indigo-600 text-white px-8 py-3 rounded-xl font-black text-xs">+ Add Result</button>
+          <div className="flex gap-2">
+            <button onClick={handlePrintAll} className="bg-slate-800 text-white px-6 py-3 rounded-xl font-black text-xs shadow-md">🖨️ Print All</button>
+            <button onClick={() => { setEditingId(null); setSelectedStudentId(""); setStudentSearch(""); setShowForm(true); }} className="bg-indigo-600 text-white px-8 py-3 rounded-xl font-black text-xs shadow-md">+ Add Result</button>
+          </div>
         </div>
 
-        {/* Dashboard Filters */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
           <div className="bg-white p-4 rounded-2xl border shadow-sm">
             <span className="text-[9px] text-slate-400">CLASS</span>
@@ -332,13 +358,12 @@ export default function FinalResultPage() {
               {examTypes.map(e => <option key={e} value={e}>{e}</option>)}
             </select>
           </div>
-          <div className="bg-indigo-600 p-4 rounded-2xl shadow-lg">
+          <div className="bg-indigo-600 p-4 rounded-2xl shadow-lg text-white">
             <span className="text-[9px] text-indigo-200">SEARCH</span>
             <input type="text" placeholder="NAME / ROLL NO..." className="w-full bg-transparent text-white placeholder:text-indigo-300 font-black outline-none italic" value={dashboardSearch} onChange={(e) => setDashboardSearch(e.target.value)} />
           </div>
         </div>
 
-        {/* Results Table */}
         <div className="bg-white rounded-[24px] border shadow-sm overflow-hidden">
           <table className="w-full text-left text-xs italic">
             <thead className="bg-slate-50 border-b text-[9px] text-slate-400 uppercase">
@@ -350,25 +375,28 @@ export default function FinalResultPage() {
                 <th className="px-6 py-4 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
-              {resultList.filter(r => r.name.toLowerCase().includes(dashboardSearch.toLowerCase()) || (r.examRollNo && r.examRollNo.toString().includes(dashboardSearch))).map(r => (
-                <tr key={r.id} className="hover:bg-slate-50">
-                  <td className="px-6 py-4 font-black text-indigo-600">{r.srNo || '-'}</td>
+            <tbody className="divide-y divide-slate-100 font-black">
+              {resultList
+                .filter(r => r.name.toLowerCase().includes(dashboardSearch.toLowerCase()) || (r.examRollNo && r.examRollNo.toString().includes(dashboardSearch)))
+                .sort((a, b) => (parseInt(a.examRollNo) || 0) - (parseInt(b.examRollNo) || 0))
+                .map(r => (
+                <tr key={r.id} className="hover:bg-slate-50 transition-colors">
+                  <td className="px-6 py-4 text-indigo-600">{r.srNo || '-'}</td>
                   <td className="px-6 py-4 flex items-center gap-3">
                     <div className="w-8 h-8 rounded-full bg-slate-200 overflow-hidden border">
                       {r.photoURL ? <img src={r.photoURL} className="w-full h-full object-cover" alt="S" /> : <div className="w-full h-full bg-slate-100" />}
                     </div>
                     <div>
-                      <p className="font-black text-slate-800 text-sm leading-none">{r.name}</p>
-                      <p className="text-[9px] text-slate-400 italic mt-1">Reg: {r.regNo || 'N/A'}</p>
+                      <p className="text-slate-800 text-sm leading-none uppercase">{r.name}</p>
+                      <p className="text-[9px] text-slate-400 italic mt-1 font-bold">Reg: {r.regNo || 'N/A'}</p>
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-center font-bold">{r.examRollNo}</td>
-                  <td className="px-6 py-4 text-center text-indigo-600 font-bold">{r.exam}</td>
+                  <td className="px-6 py-4 text-center">{r.examRollNo}</td>
+                  <td className="px-6 py-4 text-center text-indigo-600">{r.exam}</td>
                   <td className="px-6 py-4 text-right space-x-1">
-                    <button onClick={() => { setEditingId(r.id); setSelectedStudentId(r.studentId); setStudentSearch(r.name); setCls(r.className); setExam(r.exam); setRows(r.rows); setShowForm(true); }} className="text-blue-600 border px-3 py-1 rounded-lg font-black text-[9px]">Edit</button>
-                    <button onClick={() => {setSelectedResult(r); setShowModal(true);}} className="bg-indigo-600 text-white px-4 py-1.5 rounded-lg font-black text-[9px]">View</button>
-                    <button onClick={() => {if(window.confirm('Delete?')) deleteDoc(doc(db, "examResults", r.id)).then(loadResults)}} className="text-red-300 ml-1">✕</button>
+                    <button onClick={() => { setEditingId(r.id); setSelectedStudentId(r.studentId); setStudentSearch(r.name); setCls(r.className); setExam(r.exam); setRows(r.rows); setShowForm(true); }} className="text-blue-600 border px-3 py-1 rounded-lg font-black text-[9px] hover:bg-blue-50">Edit</button>
+                    <button onClick={() => {setSelectedResult(r); setShowModal(true);}} className="bg-indigo-600 text-white px-4 py-1.5 rounded-lg font-black text-[9px] hover:bg-indigo-700">View</button>
+                    <button onClick={() => {if(window.confirm('Delete?')) deleteDoc(doc(db, "examResults", r.id)).then(loadResults)}} className="text-red-300 ml-1 hover:text-red-600">✕</button>
                   </td>
                 </tr>
               ))}
@@ -377,44 +405,35 @@ export default function FinalResultPage() {
         </div>
       </div>
 
-      {/* FORM MODAL */}
       {showForm && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[150] flex items-center justify-center p-2">
           <div className="bg-white w-full max-w-4xl max-h-[92vh] rounded-[30px] shadow-2xl overflow-y-auto p-5 md:p-10 italic">
-            <div className="flex justify-between items-center mb-6">
+            <div className="flex justify-between items-center mb-6 border-b pb-4">
               <h2 className="text-lg font-black text-indigo-600 italic">Result Entry Form</h2>
-              <button onClick={() => setShowForm(false)} className="bg-slate-100 p-2 px-4 rounded-full">✕</button>
+              <button onClick={() => setShowForm(false)} className="bg-slate-100 p-2 px-4 rounded-full font-black">✕</button>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
               <div className="space-y-3">
-                 <div className="grid grid-cols-2 gap-2">
-                   <div>
-                     <label className="text-slate-400 block text-[9px]">CLASS</label>
-                     <select className="w-full bg-slate-50 p-3 rounded-2xl font-black outline-none" value={cls} onChange={e => setCls(e.target.value)} disabled={editingId}>
-                       {classesList.map(c => <option key={c} value={c}>{c}</option>)}
-                     </select>
-                   </div>
-                   <div>
-                     <label className="text-slate-400 block text-[9px]">EXAM</label>
-                     <select className="w-full bg-slate-50 p-3 rounded-2xl font-black outline-none" value={exam} onChange={e => setExam(e.target.value)}>
-                       {examTypes.map(e => <option key={e} value={e}>{e}</option>)}
-                     </select>
-                   </div>
-                 </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-slate-400 block text-[9px]">CLASS</label>
+                      <select className="w-full bg-slate-50 p-3 rounded-2xl font-black outline-none" value={cls} onChange={e => setCls(e.target.value)} disabled={editingId}>
+                        {classesList.map(c => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-slate-400 block text-[9px]">EXAM</label>
+                      <select className="w-full bg-slate-50 p-3 rounded-2xl font-black outline-none" value={exam} onChange={e => setExam(e.target.value)}>
+                        {examTypes.map(e => <option key={e} value={e}>{e}</option>)}
+                      </select>
+                    </div>
+                  </div>
               </div>
 
               <div className="relative">
                 <label className="text-slate-400 block text-[9px]">STUDENT SEARCH ({cls})</label>
-                <input 
-                  type="text" 
-                  className="w-full bg-indigo-50/50 p-3 font-black border-2 border-indigo-100 rounded-2xl"
-                  value={studentSearch} 
-                  onClick={() => setShowDropdown(true)} 
-                  onChange={e => {setStudentSearch(e.target.value); setShowDropdown(true);}} 
-                  disabled={editingId} 
-                />
-                
+                <input type="text" className="w-full bg-indigo-50/50 p-3 font-black border-2 border-indigo-100 rounded-2xl outline-none" value={studentSearch} onClick={() => setShowDropdown(true)} onChange={e => {setStudentSearch(e.target.value); setShowDropdown(true);}} disabled={editingId} />
                 {showDropdown && !editingId && (
                   <div className="absolute left-0 w-full bg-white border-2 border-indigo-100 rounded-2xl z-20 max-h-56 overflow-y-auto shadow-xl mt-1">
                     {allStudents.filter(s => s.name.toLowerCase().includes(studentSearch.toLowerCase()) || (s.examRollNo && s.examRollNo.toString().includes(studentSearch))).map(s => {
@@ -434,8 +453,24 @@ export default function FinalResultPage() {
               </div>
             </div>
 
+            <div className="flex flex-wrap items-end gap-3 mb-4 bg-slate-50 p-4 rounded-3xl border border-dashed border-slate-200">
+               <div className="w-24">
+                  <label className="text-slate-400 block text-[7px] mb-1">ALL MAX</label>
+                  <input type="number" className="w-full p-2 bg-white rounded-xl font-black outline-none border text-center text-xs" value={globalMax} onChange={(e) => applyGlobalMax(e.target.value)} />
+               </div>
+               <div className="w-20">
+                  <label className="text-slate-400 block text-[7px] mb-1">MIN RANGE</label>
+                  <input type="number" className="w-full p-2 bg-white rounded-xl font-black outline-none border text-center text-xs text-red-500" value={magicMin} onChange={(e) => setMagicMin(e.target.value)} />
+               </div>
+               <div className="w-20">
+                  <label className="text-slate-400 block text-[7px] mb-1">MAX RANGE</label>
+                  <input type="number" className="w-full p-2 bg-white rounded-xl font-black outline-none border text-center text-xs text-green-600" value={magicMax} onChange={(e) => setMagicMax(e.target.value)} />
+               </div>
+               <button onClick={magicFillMarks} className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-5 py-2 rounded-xl font-black text-[9px] shadow-lg hover:scale-105 transition-transform">✨ APPLY MAGIC FILL</button>
+            </div>
+
             <div className="rounded-[20px] border-2 border-slate-50 overflow-hidden bg-slate-50/20 mb-8">
-              <table className="w-full text-xs font-black uppercase">
+              <table className="w-full text-xs font-black uppercase italic">
                 <thead className="bg-slate-100 text-slate-400">
                   <tr><th className="p-3 text-left">Subject</th><th className="p-3 text-center w-20">Total</th><th className="p-3 text-center w-24 text-indigo-600">Obt.</th><th className="p-3 w-8"></th></tr>
                 </thead>
@@ -444,8 +479,8 @@ export default function FinalResultPage() {
                     <tr key={i}>
                       <td className="p-1"><input className="w-full p-2 bg-transparent outline-none font-black" value={r.subject} onChange={e => handleRowChange(i, 'subject', e.target.value)} /></td>
                       <td className="p-1"><input type="number" className="w-full p-2 bg-transparent outline-none text-center" value={r.total} onChange={e => handleRowChange(i, 'total', e.target.value)} /></td>
-                      <td className="p-1"><input type="number" className="w-full p-2 bg-transparent outline-none text-center text-indigo-600 text-lg" value={r.marks} onChange={e => handleRowChange(i, 'marks', e.target.value)} /></td>
-                      <td className="p-1"><button onClick={() => setRows(rows.filter((_, idx) => idx !== i))} className="text-red-200">✕</button></td>
+                      <td className="p-1"><input type="number" className="w-full p-2 bg-transparent outline-none text-center text-indigo-600 text-lg font-black" value={r.marks} onChange={e => handleRowChange(i, 'marks', e.target.value)} /></td>
+                      <td className="p-1 text-center"><button onClick={() => setRows(rows.filter((_, idx) => idx !== i))} className="text-red-200 hover:text-red-600">✕</button></td>
                     </tr>
                   ))}
                 </tbody>
@@ -453,8 +488,8 @@ export default function FinalResultPage() {
             </div>
             
             <div className="flex gap-2">
-              <button className="flex-1 bg-slate-100 py-4 rounded-2xl font-black" onClick={() => setShowForm(false)}>Close</button>
-              <button disabled={loading} className="flex-[2] py-4 rounded-2xl bg-indigo-600 text-white font-black shadow-xl" onClick={saveResult}>{loading ? 'WAIT...' : 'SAVE RESULT'}</button>
+              <button className="flex-1 bg-slate-100 py-4 rounded-2xl font-black shadow-sm" onClick={() => setShowForm(false)}>Close</button>
+              <button disabled={loading} className="flex-[2] py-4 rounded-2xl bg-indigo-600 text-white font-black shadow-xl hover:bg-indigo-700" onClick={saveResult}>{loading ? 'WAIT...' : 'SAVE RESULT'}</button>
             </div>
           </div>
         </div>

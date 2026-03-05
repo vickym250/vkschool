@@ -57,16 +57,13 @@ export default function AddStudent({ close, editData }) {
     transportId: "", transportFees: 0 
   });
 
-  // --- 🛠️ Helper: Universal Fixer Logic ---
   const fixDataForForm = (data) => {
     let cleanData = { ...data };
-
     if (data.gender) {
       const g = data.gender.toString().toLowerCase();
       if (g === "m" || g === "male") cleanData.gender = "Male";
       else if (g === "f" || g === "female") cleanData.gender = "Female";
     }
-
     if (data.category) {
       const c = data.category.toString().toLowerCase();
       if (c === "gen" || c === "general") cleanData.category = "General";
@@ -74,21 +71,14 @@ export default function AddStudent({ close, editData }) {
       else if (c === "sc") cleanData.category = "SC";
       else if (c === "st") cleanData.category = "ST";
     }
-
     if (data.dob && data.dob.includes("-")) {
       const parts = data.dob.split("-");
-      if (parts[0].length === 2) { 
-        cleanData.dob = `${parts[2]}-${parts[1]}-${parts[0]}`;
-      }
+      if (parts[0].length === 2) { cleanData.dob = `${parts[2]}-${parts[1]}-${parts[0]}`; }
     }
-
     if (data.admissionDate && data.admissionDate.includes("-")) {
       const aParts = data.admissionDate.split("-");
-      if (aParts[0].length === 2) {
-        cleanData.admissionDate = `${aParts[2]}-${aParts[1]}-${aParts[0]}`;
-      }
+      if (aParts[0].length === 2) { cleanData.admissionDate = `${aParts[2]}-${aParts[1]}-${aParts[0]}`; }
     }
-
     return cleanData;
   };
 
@@ -116,7 +106,6 @@ export default function AddStudent({ close, editData }) {
             setAllMasterSubjects(data.allSubjects || []);
             setAvailableClasses(Object.keys(data.mapping || {}).sort((a, b) => a.localeCompare(b, undefined, { numeric: true })));
           }
-
           if (editData) {
             const processedData = fixDataForForm(editData);
             setForm({ ...processedData, photo: null });
@@ -124,11 +113,7 @@ export default function AddStudent({ close, editData }) {
             setSavedStudentId(editData.id);
           }
         }
-      } catch (err) { 
-        console.error("Error:", err); 
-      } finally {
-        if (isMounted) setInitialLoading(false);
-      }
+      } catch (err) { console.error("Error:", err); } finally { if (isMounted) setInitialLoading(false); }
     };
     fetchData();
     return () => { isMounted = false; };
@@ -331,7 +316,7 @@ export default function AddStudent({ close, editData }) {
 
               <div className="flex flex-col gap-1">
                 <label className="text-[10px] font-bold text-gray-400 uppercase">{t.admDate}</label>
-                <input type="date" name="admissionDate" value={form.admissionDate} onChange={handleChange} className="border-2 p-2.5 rounded-xl outline-none" required />
+                <input type="date" name="admissionDate" value={form.admissionDate} onChange={handleChange} className="border-2 p-2.5 rounded-xl outline-none" />
               </div>
               <div className="flex flex-col gap-1">
                 <label className="text-[10px] font-bold text-gray-400 uppercase">{t.name}</label>
@@ -346,14 +331,13 @@ export default function AddStudent({ close, editData }) {
               </div>
               <div className="flex flex-col gap-1">
                 <label className="text-[10px] font-bold text-gray-400 uppercase">Gender</label>
-                <select name="gender" value={form.gender} onChange={handleChange} className="border-2 p-2.5 rounded-xl outline-none" required>
+                <select name="gender" value={form.gender} onChange={handleChange} className="border-2 p-2.5 rounded-xl outline-none">
                   <option value="">Gender</option>
                   <option value="Male">Male</option>
                   <option value="Female">Female</option>
                 </select>
               </div>
 
-              {/* --- 🛡️ Aadhaar Number Optional Column --- */}
               <div className="flex flex-col gap-1">
                 <label className="text-[10px] font-bold text-gray-400 uppercase">{t.aadhaar}</label>
                 <input name="aadhaar" value={form.aadhaar} onChange={handleChange} placeholder="12 Digit Number" className="border-2 p-2.5 rounded-xl outline-none font-bold" maxLength="12" />
@@ -361,7 +345,7 @@ export default function AddStudent({ close, editData }) {
 
               <div className="flex flex-col gap-1">
                 <label className="text-[10px] font-bold text-gray-400 uppercase">Category</label>
-                <select name="category" value={form.category} onChange={handleChange} className="border-2 p-2.5 rounded-xl font-bold outline-none" required>
+                <select name="category" value={form.category} onChange={handleChange} className="border-2 p-2.5 rounded-xl font-bold outline-none">
                   <option value="">Category</option>
                   {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
                 </select>
@@ -398,7 +382,7 @@ export default function AddStudent({ close, editData }) {
 
               <div className="flex flex-col gap-1">
                 <label className="text-[10px] font-bold text-gray-400 uppercase">Date of Birth</label>
-                <input type="date" name="dob" value={form.dob} onChange={handleChange} className="border-2 p-2.5 rounded-xl outline-none" required />
+                <input type="date" name="dob" value={form.dob} onChange={handleChange} className="border-2 p-2.5 rounded-xl outline-none" />
               </div>
             </section>
 
