@@ -122,7 +122,7 @@ const AdmitCardGenerator = () => {
 
   const executePrint = async (studentList) => {
     if (studentList.length === 0) return;
-    setIsPrinting(true); // Loader Chalu
+    setIsPrinting(true); 
     
     try {
       const ttSnap = await getDoc(doc(db, "Timetables", selectedClass));
@@ -171,8 +171,13 @@ const AdmitCardGenerator = () => {
             <tbody>
               ${timetable.map(t => {
                 const dateObj = new Date(t.date);
-                const formattedDate = dateObj.toLocaleDateString('en-GB'); // DD/MM/YYYY
-                const dayName = dateObj.toLocaleDateString('en-GB', { weekday: 'short' }); // Mon, Tue...
+                // FORCE DD/MM/YYYY FORMAT
+                const formattedDate = dateObj.toLocaleDateString('en-GB', {
+                  day: '2-digit',
+                  month: '2-digit',
+                  year: 'numeric'
+                });
+                const dayName = dateObj.toLocaleDateString('en-GB', { weekday: 'short' }); 
                 return `
                   <tr>
                     <td>${t.subject.toUpperCase()}</td>
@@ -243,7 +248,7 @@ const AdmitCardGenerator = () => {
       await Promise.all(promises);
 
       setTimeout(() => {
-        setIsPrinting(false); // Loader Band
+        setIsPrinting(false); 
         win.focus();
         win.print();
       }, 800);
@@ -256,7 +261,6 @@ const AdmitCardGenerator = () => {
   return (
     <div className="min-h-screen bg-slate-100 p-8 relative">
       
-      {/* Print Loader Overlay */}
       {isPrinting && (
         <div className="fixed inset-0 z-[9999] bg-black/50 backdrop-blur-sm flex flex-col items-center justify-center text-white">
           <div className="w-12 h-12 border-4 border-t-indigo-500 border-white/20 rounded-full animate-spin mb-4"></div>
