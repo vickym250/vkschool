@@ -2,13 +2,13 @@ import React, { useState, useEffect } from "react";
 import { db } from "../firebase";
 import { 
   collection, getDocs, query, where, serverTimestamp,
-  doc, deleteDoc, getDoc, runTransaction, onSnapshot
+  doc, deleteDoc, getDoc, runTransaction
 } from "firebase/firestore";
 import toast, { Toaster } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 
 /* ==========================================
-   1. REPORT CARD MODAL
+   1. REPORT CARD MODAL (Updated with DOB & Address)
    ========================================== */
 const ReportCardModal = ({ data, onClose }) => {
   const navigate = useNavigate();
@@ -32,7 +32,6 @@ const ReportCardModal = ({ data, onClose }) => {
 
   useEffect(() => {
     if (data?.exam === "Annual" && data?.studentId) {
-      // Session ko bhi URL mein pass kar rahe hain taaki MarksSheet page sahi se filter kar sake
       navigate(`/marksheet/${data.studentId}/${data.session}`, { replace: true });
     }
   }, [data, navigate]);
@@ -53,6 +52,7 @@ const ReportCardModal = ({ data, onClose }) => {
           <button onClick={onClose} className="px-5 py-2 bg-white text-red-600 text-xs font-black rounded-full shadow-xl border border-red-100">CLOSE</button>
         </div>
 
+        {/* Header Section */}
         <div className="flex flex-col md:flex-row items-center justify-between border-b-[3px] border-blue-900 pb-4 mb-6">
           <img src={school.logoUrl} alt="Logo" className="w-16 h-16 md:w-20 md:h-20 object-contain" />
           <div className="flex-1 px-4 text-center md:text-left">
@@ -67,19 +67,21 @@ const ReportCardModal = ({ data, onClose }) => {
           </div>
         </div>
 
+        {/* Student Info Section (Updated with DOB & Address) */}
         <div className="flex justify-between items-start gap-6 mb-6">
-          <div className="flex-1 grid grid-cols-1 gap-y-1.5">
+          <div className="flex-1 grid grid-cols-1 gap-y-1">
             {[
               { label: "STUDENT NAME", value: data.name, bold: true },
               { label: "EXAM ROLL NO", value: data.examRollNo },
-              { label: "REG NO.", value: data.regNo || "N/A" },
+              { label: "DATE OF BIRTH", value: data.dob || "N/A" }, // Naya Field
               { label: "CLASS", value: data.className },
               { label: "FATHER'S NAME", value: data.fatherName || "N/A" },
-              { label: "MOTHER'S NAME", value: data.motherName || "N/A" }
+              { label: "MOTHER'S NAME", value: data.motherName || "N/A" },
+              { label: "ADDRESS", value: data.address || "N/A" } // Naya Field
             ].map((item, idx) => (
               <div key={idx} className="flex border-b border-gray-100 py-1 items-center">
                 <span className="w-32 font-bold text-blue-900 text-[10px] md:text-[12px] shrink-0">{item.label}:</span>
-                <span className={`uppercase text-gray-800 ${item.bold ? 'font-black' : 'font-medium'}`}>{item.value}</span>
+                <span className={`uppercase text-gray-800 text-[11px] ${item.bold ? 'font-black' : 'font-medium'}`}>{item.value}</span>
               </div>
             ))}
           </div>
@@ -88,6 +90,7 @@ const ReportCardModal = ({ data, onClose }) => {
           </div>
         </div>
 
+        {/* Marks Table */}
         <table className="w-full border-collapse border-2 border-black text-[11px] md:text-[13px] mb-6">
           <thead>
             <tr className="bg-blue-900 text-white">
@@ -119,6 +122,7 @@ const ReportCardModal = ({ data, onClose }) => {
           </tfoot>
         </table>
 
+        {/* Result Stats */}
         <div className="grid grid-cols-3 gap-3 mb-8">
             <div className="border border-blue-900 rounded-lg p-2 text-center">
               <p className="text-[8px] text-gray-400 font-bold">Percentage</p>
@@ -134,6 +138,7 @@ const ReportCardModal = ({ data, onClose }) => {
             </div>
         </div>
 
+        {/* Footer Signatures */}
         <div className="flex justify-between items-end mt-12 px-4">
           <div className="text-center"><div className="w-32 border-b border-gray-400 mb-1"></div><p className="text-[9px] font-black uppercase text-gray-400">Class Teacher</p></div>
           <div className="text-center"><div className="w-44 border-b-2 border-blue-900 mb-1"></div><p className="text-[9px] font-black uppercase text-blue-900">Principal Signature</p></div>
@@ -176,7 +181,7 @@ export default function FinalResultPage() {
   const examTypes = ["Quarterly", "Half-Yearly", "Annual"];
   const [showDropdown, setShowDropdown] = useState(false);
 
-  // --- MAGIC FEATURES STATES ---
+  // Magic Features
   const [globalMax, setGlobalMax] = useState("100");
   const [magicMin, setMagicMin] = useState("50");
   const [magicMax, setMagicMax] = useState("90");
@@ -241,15 +246,12 @@ export default function FinalResultPage() {
     const min = parseInt(magicMin);
     const max = parseInt(magicMax);
     if (isNaN(min) || isNaN(max) || min > max) return toast.error("Check Min/Max Range!");
-    
     setRows(rows.map(r => ({ ...r, marks: (Math.floor(Math.random() * (max - min + 1)) + min).toString() })));
     toast.success(`Magic Fill Applied!`);
   };
 
-  // --- PRINT ALL LOGIC ---
   const handlePrintAll = () => {
     if(filterExam === "Annual") {
-        // Space ko hatakar class pass kar rahe hain URL me
         navigate(`/marksheet/${filterClass.replace(/\s+/g, '')}/${session}`);
     } else {
         toast.error("Bulk Print sirf Annual exam ke liye hai.");
@@ -262,6 +264,7 @@ export default function FinalResultPage() {
     setRows(newRows);
   };
 
+  // --- SAVE RESULT (Updated to include DOB & Address) ---
   const saveResult = async () => {
     if (!selectedStudentId) return toast.error("Student select karo!");
     const isAlreadyDone = resultList.some(res => String(res.studentId) === String(selectedStudentId) && res.exam === exam && res.session === session);
@@ -292,6 +295,8 @@ export default function FinalResultPage() {
         }
 
         const resultDocRef = editingId ? doc(db, "examResults", editingId) : doc(collection(db, "examResults"));
+        
+        // Payload with DOB and Address from Student collection
         const payload = {
           session, 
           studentId: selectedStudentId, 
@@ -301,6 +306,8 @@ export default function FinalResultPage() {
           regNo: student?.regNo || "",
           fatherName: student?.fatherName || "", 
           motherName: student?.motherName || "",
+          dob: student?.dob || "", // Fetching DOB from student data
+          address: student?.address || "", // Fetching Address from student data
           photoURL: student?.photoURL || "", 
           exam, 
           rows: cleanRows, 
@@ -345,6 +352,7 @@ export default function FinalResultPage() {
           </div>
         </div>
 
+        {/* Filters */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
           <div className="bg-white p-4 rounded-2xl border shadow-sm">
             <span className="text-[9px] text-slate-400">CLASS</span>
@@ -364,6 +372,7 @@ export default function FinalResultPage() {
           </div>
         </div>
 
+        {/* Results Table */}
         <div className="bg-white rounded-[24px] border shadow-sm overflow-hidden">
           <table className="w-full text-left text-xs italic">
             <thead className="bg-slate-50 border-b text-[9px] text-slate-400 uppercase">
@@ -405,6 +414,7 @@ export default function FinalResultPage() {
         </div>
       </div>
 
+      {/* Result Entry Form */}
       {showForm && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[150] flex items-center justify-center p-2">
           <div className="bg-white w-full max-w-4xl max-h-[92vh] rounded-[30px] shadow-2xl overflow-y-auto p-5 md:p-10 italic">
@@ -453,6 +463,7 @@ export default function FinalResultPage() {
               </div>
             </div>
 
+            {/* Magic Fill Settings */}
             <div className="flex flex-wrap items-end gap-3 mb-4 bg-slate-50 p-4 rounded-3xl border border-dashed border-slate-200">
                <div className="w-24">
                   <label className="text-slate-400 block text-[7px] mb-1">ALL MAX</label>
@@ -469,6 +480,7 @@ export default function FinalResultPage() {
                <button onClick={magicFillMarks} className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-5 py-2 rounded-xl font-black text-[9px] shadow-lg hover:scale-105 transition-transform">✨ APPLY MAGIC FILL</button>
             </div>
 
+            {/* Marks Table Entry */}
             <div className="rounded-[20px] border-2 border-slate-50 overflow-hidden bg-slate-50/20 mb-8">
               <table className="w-full text-xs font-black uppercase italic">
                 <thead className="bg-slate-100 text-slate-400">
