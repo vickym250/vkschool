@@ -1,0 +1,13 @@
+{
+  "projects": {
+<<<<<<< HEAD
+    "default": "schooltest-b8ce2",
+    "prod": "vivekanand-353c0"
+=======
+    "default": "brightschool-a8c3f",
+    "prod": "brightschool-a8c3f"
+>>>>>>> a86c5b55597f50df9bd3a08d2b0769b9cf33db0a
+  },
+  "targets": {},
+  "etags": {}
+}
