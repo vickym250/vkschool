@@ -122,17 +122,15 @@ export default function MarksSheet() {
             .result-box { border: 1.5px solid #1e3a8a; background: #f0f9ff !important; -webkit-print-color-adjust: exact; }
             
             /* Signature Styling */
-            /* Signature Styling */
-.sig-container { position: relative; width: 150px; text-align: center; }
-.principal-sig-img { 
-   position: absolute; 
-   bottom: 35px; /* 20px se badha kar 35px kar diya */
-   left: 50%; 
-   transform: translateX(-50%); 
-   height: 50px; /* Thodi height bhi settle kar di */
-   width: auto; 
-   mix-blend-mode: multiply; 
-}
+            .sig-container { position: relative; width: 150px; text-align: center; }
+            .principal-sig-img { 
+               position: absolute; 
+               bottom: 20px; 
+               left: 50%; 
+               transform: translateX(-50%); 
+               height: 45px; 
+               width: auto; 
+               mix-blend-mode: multiply; 
             }
           </style>
         </head>
@@ -360,27 +358,26 @@ export default function MarksSheet() {
                 </div>
 
                 {/* Footer Section - Signature Logic Added */}
-               {/* Footer Section - Signature Area */}
-<div className="flex justify-between items-end mt-2 pt-4 px-2 pb-8"> {/* pb-2 ko pb-8 kiya */}
-  <div className="text-center">
-    <div className="w-32 border-t border-blue-900 mb-1"></div>
-    <p className="text-[10px] font-black uppercase text-blue-900">Class Teacher</p>
-  </div>
-  
-  <div className="w-16 h-16 border border-dashed border-blue-900 rounded-full flex items-center justify-center opacity-20">
-    <span className="text-[8px] font-bold text-blue-900">SEAL</span>
-  </div>
-  
-  <div className="sig-container">
-    {schoolInfo.signatureUrl && (
-      <img src={schoolInfo.signatureUrl} className="principal-sig-img" alt="Principal Signature" />
-    )}
-    <div className="w-40 border-t border-blue-900 mb-1 mx-auto"></div>
-    <p className="text-[10px] font-black uppercase text-blue-900">
-      Signature <br /> Principal/HeadMaster
-    </p>
-  </div>
-</div>
+                <div className="flex justify-between items-end mt-2 pt-4 px-2 pb-2">
+                  <div className="text-center">
+                    <div className="w-32 border-t border-blue-900 mb-1"></div>
+                    <p className="text-[10px] font-black uppercase text-blue-900">Class Teacher</p>
+                  </div>
+                  <div className="w-16 h-16 border border-dashed border-blue-900 rounded-full flex items-center justify-center opacity-20">
+                    <span className="text-[8px] font-bold text-blue-900">SEAL</span>
+                  </div>
+                  
+                  {/* Principal Signature Area */}
+                  <div className="sig-container">
+                    {schoolInfo.signatureUrl && (
+                      <img src={schoolInfo.signatureUrl} className="principal-sig-img" alt="Principal Signature" />
+                    )}
+                    <div className="w-40 border-t border-blue-900 mb-1 mx-auto"></div>
+                    <p className="text-[10px] font-black uppercase text-blue-900">
+                      Signature <br /> Principal/HeadMaster
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
           );
