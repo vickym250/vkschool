@@ -122,13 +122,13 @@ export default function MarksSheet() {
             .result-box { border: 1.5px solid #1e3a8a; background: #f0f9ff !important; -webkit-print-color-adjust: exact; }
             
             /* Signature Styling */
-            .sig-container { position: relative; width: 150px; text-align: center; }
+            .sig-container { position: relative; width: 150px; text-align: center;  bottom: 20px;   }
             .principal-sig-img { 
                position: absolute; 
                bottom: 20px; 
                left: 50%; 
                transform: translateX(-50%); 
-               height: 20px; 
+               height: 45px; 
                width: auto; 
                mix-blend-mode: multiply; 
             }
@@ -359,7 +359,7 @@ export default function MarksSheet() {
 
                 {/* Footer Section - Signature Logic Added */}
                 <div className="flex justify-between items-end mt-2 pt-4 px-2 pb-2">
-                  <div className="text-center">
+                  <div className="text-center mb-10">
                     <div className="w-32 border-t border-blue-900 mb-1"></div>
                     <p className="text-[10px] font-black uppercase text-blue-900">Class Teacher</p>
                   </div>
