@@ -128,7 +128,7 @@ export default function MarksSheet() {
                bottom: 20px; 
                left: 50%; 
                transform: translateX(-50%); 
-               height: 45px; 
+               height: 20px; 
                width: auto; 
                mix-blend-mode: multiply; 
             }
