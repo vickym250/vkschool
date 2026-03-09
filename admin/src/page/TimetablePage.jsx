@@ -44,12 +44,17 @@ const TimetablePro = () => {
     });
 
     const qTeachers = query(collection(db, "teachers"), where("session", "==", selectedSession));
-    const unsubTeachers = onSnapshot(qTeachers, (snapshot) => {
-      const activeTeachers = snapshot.docs
-        .map(d => ({ id: d.id, ...d.data() }))
-        .filter(t => t.isDeleted !== true); 
-      setTeachers(activeTeachers);
-    });
+
+const unsubTeachers = onSnapshot(qTeachers, (snapshot) => {
+  const activeTeachers = snapshot.docs
+    .map(d => ({ id: d.id, ...d.data() }))
+    .filter(t => 
+      t.isDeleted !== true && // Jo delete nahi hue
+      t.role === "Teacher"    // 👈 Aur jinka role sirf "Teacher" hai
+    ); 
+  
+  setTeachers(activeTeachers);
+});
 
     const unsubClasses = onSnapshot(collection(db, "classes"), (snapshot) => {
       const classData = snapshot.docs.map(d => d.data().name);
