@@ -8,20 +8,23 @@ export default function SchoolManager() {
     const [saving, setSaving] = useState(false);
     const [editMode, setEditMode] = useState(false);
     
-    // Naye fields add kiye hain: email, website, tagline
+    // schoolData mein signatureUrl add kiya gaya hai
     const [schoolData, setSchoolData] = useState({
         name: "",
-        slogan: "", // Tagline
+        slogan: "", 
         affiliation: "",
         address: "",
         contact: "",
         email: "",
         website: "",
-        logoUrl: ""
+        logoUrl: "",
+        signatureUrl: "" 
     });
-    const [newLogo, setNewLogo] = useState(null);
 
-    // --- 1. Data Fetch Karna ---
+    const [newLogo, setNewLogo] = useState(null);
+    const [newSignature, setNewSignature] = useState(null);
+
+    // --- 1. Firebase se Data Fetch Karna ---
     useEffect(() => {
         const fetchSettings = async () => {
             try {
@@ -39,27 +42,41 @@ export default function SchoolManager() {
         fetchSettings();
     }, []);
 
-    // --- 2. Data Save Karna ---
+    // --- 2. Data aur Images Save Karna ---
     const handleSave = async (e) => {
         e.preventDefault();
         setSaving(true);
         try {
             let finalLogoUrl = schoolData.logoUrl;
+            let finalSignatureUrl = schoolData.signatureUrl;
 
+            // Logo Upload Logic
             if (newLogo) {
-                // Har baar naya logo purane wale ko replace karega storage mein
-                const storageRef = ref(storage, `school_logo/main_logo`);
-                await uploadBytes(storageRef, newLogo);
-                finalLogoUrl = await getDownloadURL(storageRef);
+                const logoRef = ref(storage, `school_assets/main_logo`);
+                await uploadBytes(logoRef, newLogo);
+                finalLogoUrl = await getDownloadURL(logoRef);
             }
 
-            const updatedData = { ...schoolData, logoUrl: finalLogoUrl };
+            // Signature Upload Logic
+            if (newSignature) {
+                const sigRef = ref(storage, `school_assets/principal_signature`);
+                await uploadBytes(sigRef, newSignature);
+                finalSignatureUrl = await getDownloadURL(sigRef);
+            }
+
+            const updatedData = { 
+                ...schoolData, 
+                logoUrl: finalLogoUrl, 
+                signatureUrl: finalSignatureUrl 
+            };
+            
             await setDoc(doc(db, "settings", "schoolDetails"), updatedData);
             
             setSchoolData(updatedData);
             setEditMode(false);
             setNewLogo(null);
-            alert("School Details Update Ho Gayi Hain! ✅");
+            setNewSignature(null);
+            alert("School Profile Update Ho Gayi Hain! ✅");
         } catch (err) {
             console.error(err);
             alert("Kuch error aaya hai bhai!");
@@ -68,17 +85,17 @@ export default function SchoolManager() {
         }
     };
 
-    if (loading) return <div className="p-10 text-center font-bold animate-pulse text-blue-900">Details Load Ho Rahi Hain...</div>;
+    if (loading) return <div className="p-10 text-center font-bold animate-pulse text-blue-900 text-xl">Details Load Ho Rahi Hain...</div>;
 
     return (
-        <div className="p-4 md:p-8 bg-gray-50 min-h-screen">
-            <div className="max-w-4xl mx-auto bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-100">
+        <div className="p-4 md:p-8 bg-gray-50 min-h-screen font-sans">
+            <div className="max-w-5xl mx-auto bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-100">
                 
                 {/* Header */}
                 <div className="bg-gradient-to-r from-blue-900 to-indigo-800 p-8 flex justify-between items-center">
                     <div>
                         <h2 className="text-white text-2xl font-black uppercase tracking-wider">School Profile</h2>
-                        <p className="text-blue-200 text-xs mt-1">Manage your institution's public identity</p>
+                        <p className="text-blue-200 text-xs mt-1">Manage institutional assets and public details</p>
                     </div>
                     {!editMode && (
                         <button 
@@ -91,130 +108,125 @@ export default function SchoolManager() {
                 </div>
 
                 <form onSubmit={handleSave} className="p-6 md:p-10">
-                    <div className="flex flex-col md:flex-row gap-10">
+                    <div className="flex flex-col md:flex-row gap-12">
                         
-                        {/* Left: Logo Section */}
-                        <div className="flex flex-col items-center space-y-4">
-                            <div className="w-48 h-48 border-4 border-dashed border-blue-100 rounded-2xl overflow-hidden bg-gray-50 flex items-center justify-center shadow-inner relative group">
-                                {newLogo ? (
-                                    <img src={URL.createObjectURL(newLogo)} className="w-full h-full object-contain p-2" alt="Preview" />
-                                ) : schoolData.logoUrl ? (
-                                    <img src={schoolData.logoUrl} className="w-full h-full object-contain p-2" alt="Logo" />
-                                ) : (
-                                    <div className="text-center p-4">
-                                        <div className="text-4xl mb-2">🏫</div>
-                                        <span className="text-gray-400 font-bold uppercase text-[10px]">No Logo</span>
-                                    </div>
+                        {/* LEFT SIDE: Images (Logo & Signature) */}
+                        <div className="flex flex-col items-center space-y-10">
+                            
+                            {/* Logo Section */}
+                            <div className="text-center">
+                                <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-3 block">School Logo</label>
+                                <div className="w-44 h-44 border-4 border-dashed border-blue-100 rounded-3xl overflow-hidden bg-gray-50 flex items-center justify-center shadow-inner relative group">
+                                    {newLogo ? (
+                                        <img src={URL.createObjectURL(newLogo)} className="w-full h-full object-contain p-2" alt="New Logo" />
+                                    ) : schoolData.logoUrl ? (
+                                        <img src={schoolData.logoUrl} className="w-full h-full object-contain p-2" alt="Current Logo" />
+                                    ) : (
+                                        <span className="text-4xl">🏫</span>
+                                    )}
+                                </div>
+                                {editMode && (
+                                    <label className="mt-3 inline-block bg-blue-50 text-blue-700 px-4 py-1.5 rounded-lg text-xs font-bold cursor-pointer hover:bg-blue-100 transition-colors">
+                                        Change Logo
+                                        <input type="file" accept="image/*" onChange={(e) => setNewLogo(e.target.files[0])} className="hidden" />
+                                    </label>
                                 )}
                             </div>
-                            {editMode && (
-                                <div className="w-full">
-                                    <label className="block text-center text-xs font-bold text-blue-600 cursor-pointer hover:underline">
-                                        Change Logo
-                                        <input 
-                                            type="file" 
-                                            accept="image/*"
-                                            onChange={(e) => setNewLogo(e.target.files[0])}
-                                            className="hidden"
-                                        />
-                                    </label>
+
+                            {/* Signature Section */}
+                            <div className="text-center w-full">
+                                <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-3 block">Authorized Signature</label>
+                                <div className="w-full h-28 border-4 border-dashed border-green-100 rounded-2xl overflow-hidden bg-gray-50 flex items-center justify-center shadow-inner relative">
+                                    {newSignature ? (
+                                        <img src={URL.createObjectURL(newSignature)} className="w-full h-full object-contain p-2" alt="New Signature" />
+                                    ) : schoolData.signatureUrl ? (
+                                        <img src={schoolData.signatureUrl} className="w-full h-full object-contain p-2" alt="Current Signature" />
+                                    ) : (
+                                        <span className="text-gray-400 font-bold text-xs">NO SIGNATURE</span>
+                                    )}
                                 </div>
-                            )}
+                                {editMode && (
+                                    <label className="mt-3 inline-block bg-green-50 text-green-700 px-4 py-1.5 rounded-lg text-xs font-bold cursor-pointer hover:bg-green-100 transition-colors">
+                                        Upload Signature
+                                        <input type="file" accept="image/*" onChange={(e) => setNewSignature(e.target.files[0])} className="hidden" />
+                                    </label>
+                                )}
+                                <p className="text-[9px] text-gray-400 mt-2 italic">*Transparent PNG recommended</p>
+                            </div>
                         </div>
 
-                        {/* Right: Details Section */}
-                        <div className="flex-1 space-y-6">
-                            {/* School Name & Tagline */}
-                            <div className="space-y-4 border-b pb-6">
-                                <div className="grid grid-cols-1 gap-4">
-                                    <DetailField 
-                                        label="School Name" 
-                                        value={schoolData.name} 
-                                        isEdit={editMode} 
-                                        onChange={(val) => setSchoolData({...schoolData, name: val})}
-                                        important
-                                    />
-                                    <DetailField 
-                                        label="School Slogan / Tagline" 
-                                        value={schoolData.slogan} 
-                                        isEdit={editMode} 
-                                        onChange={(val) => setSchoolData({...schoolData, slogan: val})}
-                                        placeholder="e.g. Education for Excellence"
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Contact Info Grid */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* RIGHT SIDE: Text Fields */}
+                        <div className="flex-1 space-y-8">
+                            
+                            {/* Name & Slogan */}
+                            <div className="grid grid-cols-1 gap-6 border-b pb-8">
                                 <DetailField 
-                                    label="Affiliation Board" 
-                                    value={schoolData.affiliation} 
+                                    label="School Full Name" 
+                                    value={schoolData.name} 
                                     isEdit={editMode} 
-                                    onChange={(val) => setSchoolData({...schoolData, affiliation: val})}
+                                    onChange={(val) => setSchoolData({...schoolData, name: val})}
+                                    important
                                 />
                                 <DetailField 
-                                    label="Contact Number" 
-                                    value={schoolData.contact} 
+                                    label="Tagline / Motto" 
+                                    value={schoolData.slogan} 
                                     isEdit={editMode} 
-                                    onChange={(val) => setSchoolData({...schoolData, contact: val})}
-                                />
-                                <DetailField 
-                                    label="Email Address" 
-                                    value={schoolData.email} 
-                                    isEdit={editMode} 
-                                    onChange={(val) => setSchoolData({...schoolData, email: val})}
-                                    type="email"
-                                />
-                                <DetailField 
-                                    label="Website URL" 
-                                    value={schoolData.website} 
-                                    isEdit={editMode} 
-                                    onChange={(val) => setSchoolData({...schoolData, website: val})}
-                                    placeholder="https://www.yourschool.com"
+                                    onChange={(val) => setSchoolData({...schoolData, slogan: val})}
+                                    placeholder="e.g. Lead us from darkness to light"
                                 />
                             </div>
 
-                            {/* Address */}
-                            <div className="pt-2">
-                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">School Address</label>
+                            {/* Info Grid */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                                <DetailField label="Affiliation" value={schoolData.affiliation} isEdit={editMode} onChange={(val) => setSchoolData({...schoolData, affiliation: val})} />
+                                <DetailField label="Contact" value={schoolData.contact} isEdit={editMode} onChange={(val) => setSchoolData({...schoolData, contact: val})} />
+                                <DetailField label="Email" value={schoolData.email} isEdit={editMode} onChange={(val) => setSchoolData({...schoolData, email: val})} type="email" />
+                                <DetailField label="Website" value={schoolData.website} isEdit={editMode} onChange={(val) => setSchoolData({...schoolData, website: val})} />
+                            </div>
+
+                            {/* Address Area */}
+                            <div>
+                                <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest block mb-2">Campus Address</label>
                                 {editMode ? (
                                     <textarea 
                                         value={schoolData.address} 
                                         onChange={(e) => setSchoolData({...schoolData, address: e.target.value})}
-                                        className="w-full mt-1 p-3 border-2 border-blue-50 rounded-xl outline-none focus:border-blue-500 transition-all"
+                                        className="w-full p-4 border-2 border-blue-50 rounded-2xl outline-none focus:border-blue-500 transition-all bg-gray-50"
                                         rows="3"
                                     />
                                 ) : (
-                                    <p className="text-sm text-gray-700 font-medium leading-relaxed mt-1">{schoolData.address || "No address provided"}</p>
+                                    <p className="text-gray-700 font-semibold leading-relaxed bg-gray-50 p-4 rounded-2xl border border-gray-100">
+                                        {schoolData.address || "Please provide school address"}
+                                    </p>
                                 )}
                             </div>
                         </div>
                     </div>
 
-                    {/* Action Buttons */}
+                    {/* Footer Actions */}
                     {editMode && (
-                        <div className="mt-10 flex flex-col md:flex-row gap-4 border-t pt-8">
+                        <div className="mt-12 flex flex-col md:flex-row gap-4 pt-8 border-t">
                             <button 
                                 type="submit"
                                 disabled={saving}
-                                className="flex-1 bg-green-600 text-white py-4 rounded-2xl font-black uppercase tracking-widest hover:bg-green-700 shadow-xl disabled:opacity-50 transition-all"
+                                className="flex-[2] bg-indigo-600 text-white py-4 rounded-2xl font-black uppercase tracking-widest hover:bg-indigo-700 shadow-xl disabled:opacity-50 transition-all active:scale-95"
                             >
-                                {saving ? "Saving..." : "💾 Save Changes"}
+                                {saving ? "Uploading Assets..." : "💾 Update School Profile"}
                             </button>
                             <button 
-                                type="button"
-                                onClick={() => {setEditMode(false); setNewLogo(null);}}
-                                className="px-10 bg-gray-100 text-gray-500 py-4 rounded-2xl font-bold hover:bg-gray-200 transition-all"
+                                type="button" 
+                                onClick={() => {setEditMode(false); setNewLogo(null); setNewSignature(null);}}
+                                className="flex-1 bg-gray-100 text-gray-500 py-4 rounded-2xl font-bold hover:bg-gray-200 transition-all"
                             >
-                                CANCEL
+                                DISCARD
                             </button>
                         </div>
                     )}
                 </form>
 
-                <div className="bg-blue-50 p-4 text-center">
-                    <p className="text-[10px] text-blue-400 uppercase font-black tracking-widest flex items-center justify-center gap-2">
-                        <span>ℹ️</span> Yeh information certificates aur report cards par print hogi
+                <div className="bg-blue-900/5 p-4 text-center">
+                    <p className="text-[10px] text-blue-600 font-bold uppercase tracking-widest">
+                        Note: Updated signature and logo will automatically reflect on all auto-generated documents.
                     </p>
                 </div>
             </div>
@@ -222,22 +234,22 @@ export default function SchoolManager() {
     );
 }
 
-// Reusable Input Component for cleaner code
+// Reusable Field Component
 function DetailField({ label, value, isEdit, onChange, important = false, type="text", placeholder="" }) {
     return (
         <div className="flex flex-col">
-            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{label}</label>
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">{label}</label>
             {isEdit ? (
                 <input 
                     type={type}
                     value={value} 
                     onChange={(e) => onChange(e.target.value)}
                     placeholder={placeholder}
-                    className={`mt-1 w-full p-2.5 border-2 border-blue-50 rounded-xl outline-none focus:border-blue-500 transition-all ${important ? 'font-bold text-blue-900' : 'text-gray-700'}`}
+                    className={`w-full p-3 border-2 border-blue-50 rounded-xl outline-none focus:border-blue-500 transition-all bg-gray-50 ${important ? 'font-bold text-blue-900 border-blue-100' : 'text-gray-700'}`}
                 />
             ) : (
-                <p className={`${important ? 'text-xl font-black text-blue-900' : 'text-sm font-bold text-gray-700'} mt-1 truncate`}>
-                    {value || "---"}
+                <p className={`${important ? 'text-xl font-black text-blue-900' : 'text-sm font-bold text-gray-700'} truncate`}>
+                    {value || "Not Set"}
                 </p>
             )}
         </div>

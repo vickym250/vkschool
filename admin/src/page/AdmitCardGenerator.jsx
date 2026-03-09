@@ -16,6 +16,7 @@ const AdmitCardGenerator = () => {
     name: "SUNSHINE ENGLISH MEDIUM SCHOOL",
     address: "",
     logoUrl: "",
+    signatureUrl: "", // Naya field add kiya
   });
 
   const classOrder = [
@@ -41,6 +42,23 @@ const AdmitCardGenerator = () => {
   const [timetableExists, setTimetableExists] = useState(false);
 
   const examTypes = ["Quarterly", "Half-Yearly", "Annual", "Pre-Board"];
+
+  // Logo aur Signature dono ke liye Base64 conversion
+  const getBase64FromUrl = async (url) => {
+    if (!url) return "";
+    try {
+      const data = await fetch(url);
+      const blob = await data.blob();
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(blob);
+        reader.onloadend = () => resolve(reader.result);
+      });
+    } catch (e) {
+      console.error("Asset fetch error:", e);
+      return url; 
+    }
+  };
 
   useEffect(() => {
     const fetchSchool = async () => {
@@ -125,12 +143,14 @@ const AdmitCardGenerator = () => {
     setIsPrinting(true);
 
     try {
-      // Data fetch from Firestore
+      // Logo aur Signature dono ko base64 mein convert kar rahe hain
+      const logoBase64 = school.logoUrl ? await getBase64FromUrl(school.logoUrl) : "";
+      const sigBase64 = school.signatureUrl ? await getBase64FromUrl(school.signatureUrl) : "";
+      
       const ttSnap = await getDoc(doc(db, "Timetables", selectedClass));
       const ttData = ttSnap.exists() ? ttSnap.data() : {};
       const timetable = (ttData[selectedExam] || []).sort((a, b) => new Date(a.date) - new Date(b.date));
       
-      // Dynamic Timings from database
       const dbTimings = ttData.timings || { firstMtg: "09:00 AM - 12:00 PM", secondMtg: "01:00 PM - 04:00 PM" };
 
       let printFrame = document.getElementById("printFrameAdmit") || document.createElement("iframe");
@@ -142,10 +162,10 @@ const AdmitCardGenerator = () => {
         <div class="admit-card">
           <div class="card-header">
              <div class="logo-box">
-               ${school.logoUrl ? `<img src="${school.logoUrl}" />` : ''}
+               ${logoBase64 ? `<img src="${logoBase64}"  />` : ''}
              </div>
              <div class="school-info">
-               <h2 class="school-name">${school.name.toUpperCase()}</h2>
+               <h2 class="school-name ">${school.name.toUpperCase()}</h2>
                <p class="school-addr">${school.address || ''}</p>
                <p class="exam-title">${selectedExam.toUpperCase()} EXAMINATION ${selectedSession}</p>
              </div>
@@ -197,11 +217,21 @@ const AdmitCardGenerator = () => {
 
           <div class="footer-section">
             <div class="timing-note">
-              <b>TIME:</b> 1st: ${dbTimings.firstMtg} | 2nd: ${dbTimings.secondMtg}
+               <div class="timing-section" style="margin-top: -130px; border-top: 1px solid #eee; padding-top: 5px;">
+                  <div class="detail-row"><span>1st Shift:</span> <b>${dbTimings.firstMtg} Onwards</b></div>
+                  <div class="detail-row"><span>2nd Shift:</span> <b>${dbTimings.secondMtg} Onwards</b></div>
+                  <p style="font-size: 8px; color: #d32f2f; margin: 2px 0;">* Late entry will not be permitted after the bell.</p>
+                  <div class="signature-row">
+                    <div class="sig">Candidate Signature</div>
+                  </div>
+               </div>
             </div>
-            <div class="signature-row">
-              <div class="sig">Candidate Signature</div>
-              <div class="sig">Principal Signature</div>
+
+            <div class="siga">
+              <div class="sig-img-container">
+                ${sigBase64 ? `<img src="${sigBase64}" class="principal-sig-img" />` : ''}
+              </div>
+              Principal/Headmaster <br/> Signature
             </div>
           </div>
         </div>
@@ -211,17 +241,26 @@ const AdmitCardGenerator = () => {
         <style>
           @page { size: A4; margin: 0; }
           body { margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; }
-          .admit-card { width: 210mm; height: 93mm; border-bottom: 1.5px dashed #444; padding: 8px 15px; box-sizing: border-box; display: flex; flex-direction: column; page-break-inside: avoid; background: #fff; }
+          .admit-card {
+            width: 210mm;
+            min-height: 93mm;
+            border-bottom: 1.5px dashed #444;
+            padding: 8px 15px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            page-break-inside: avoid;
+          }
           .card-header { display: flex; align-items: center; border-bottom: 2px solid #1e3a8a; padding-bottom: 5px; margin-bottom: 8px; position: relative; }
-          .logo-box img { height: 50px; margin-right: 15px; }
+          .logo-box img { height: 56px; width: auto; max-width: 100px; margin-right: 15px; }
           .school-info { flex: 1; text-align: center; }
-          .school-name { margin: 0; color: #1e3a8a; font-size: 18px; font-weight: 900; }
+          .school-name { margin: 0; color: #1e3a8a; font-size: 25px; font-weight: 900; }
           .school-addr { margin: 0; font-size: 9px; color: #555; }
           .exam-title { margin: 2px 0; font-size: 11px; font-weight: bold; color: #d32f2f; background: #fff5f5; display: inline-block; padding: 0 10px; border-radius: 10px; }
           .admit-tag { background: #1e3a8a; color: #fff; padding: 4px 10px; font-size: 11px; font-weight: bold; border-radius: 4px; }
           .main-body { display: flex; flex: 1; gap: 10px; align-items: flex-start; }
           .photo-column { width: 75px; }
-          .photo-box { width: 75px; height: 90px; border: 1px solid #1e3a8a; display: flex; align-items: center; justify-content: center; font-size: 10px; background: #f8fafc; overflow: hidden; }
+          .photo-box { width: 75px; height: 90px; border: 1px solid #1e3a8a; display: flex; align-items: center; justify-content: center; font-size: 8px; background: #f8fafc; overflow: hidden; }
           .photo-box img { width: 100%; height: 100%; object-fit: cover; }
           .details-column { width: 200px; font-size: 11px; display: flex; flex-direction: column; gap: 4px; }
           .detail-row { border-bottom: 1px solid #eee; padding: 2px 0; display: flex; }
@@ -232,9 +271,14 @@ const AdmitCardGenerator = () => {
           .tt-table th, .tt-table td { border: 1px solid #cbd5e1; padding: 4px; text-align: center; }
           .tt-table th { background: #f1f5f9; color: #1e3a8a; font-weight: bold; }
           .footer-section { margin-top: 5px; display: flex; justify-content: space-between; align-items: flex-end; }
-          .timing-note { font-size: 10px; color: #1e3a8a; background: #eff6ff; padding: 3px 8px; border: 1px solid #bfdbfe; border-radius: 4px; }
-          .signature-row { display: flex; gap: 40px; }
-          .sig { width: 120px; border-top: 1px solid #333; text-align: center; font-size: 9px; font-weight: bold; padding-top: 3px; }
+          .timing-note { font-size: 10px; color: #1e3a8a; background: #eff6ff; padding: 3px 8px;  border-radius: 4px; }
+          .signature-row { display: flex; gap: 40px;  margin-top:20px; }
+          .sig { width: 120px; border-top: 1px solid #333; text-align: center; font-size: 9px; font-weight: bold; margin-top :10px;  }
+          
+          .siga { width: 120px; border-top: 1px solid #333; text-align: center; font-size: 9px; font-weight: bold; margin-bottom :0px; margin-top:25px; position: relative; }
+          .sig-img-container { position: absolute; bottom: 5px; left: 0; width: 100%; display: flex; justify-content: center; pointer-events: none; }
+          .principal-sig-img { height: 50px; width: auto; object-fit: contain; mix-blend-mode: multiply; }
+
           @media print { .admit-card:nth-child(3n) { page-break-after: always; } }
         </style>`;
 

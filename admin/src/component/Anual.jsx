@@ -21,7 +21,8 @@ export default function MarksSheet() {
     address: "Barhni (opp. Cold Storage), Post- Kathawtiya Alam, Dumariyaganj, Siddharth Nagar - 272189",
     mobile: "9918488912",
     website: "https://drapjacademy.in",
-    logoUrl: ""
+    logoUrl: "",
+    signatureUrl: "" // Naya field for Signature
   });
 
   const TABLE_ROWS_COUNT = 8; 
@@ -46,7 +47,28 @@ export default function MarksSheet() {
     return found || { total: 0, marks: 0 };
   };
 
-  const handlePrint = () => {
+  // Assets ko Base64 mein badalne ke liye function (Print logic ke liye zaroori hai)
+  const getBase64FromUrl = async (url) => {
+    if (!url) return "";
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(blob);
+        reader.onloadend = () => resolve(reader.result);
+      });
+    } catch (e) {
+      console.error("Asset fetch error:", e);
+      return url; 
+    }
+  };
+
+  const handlePrint = async () => {
+    // Logo aur Signature dono ko Base64 mein convert kar rahe hain taaki print window mein gayab na hon
+    const logoBase64 = schoolInfo.logoUrl ? await getBase64FromUrl(schoolInfo.logoUrl) : "";
+    const sigBase64 = schoolInfo.signatureUrl ? await getBase64FromUrl(schoolInfo.signatureUrl) : "";
+
     const content = document.getElementById("marksheet-content").innerHTML;
     const printWindow = window.open("", "_blank", "width=1100,height=1400");
     printWindow.document.write(`
@@ -98,11 +120,30 @@ export default function MarksSheet() {
               border: 1.5px solid #1e3a8a;
             }
             .result-box { border: 1.5px solid #1e3a8a; background: #f0f9ff !important; -webkit-print-color-adjust: exact; }
+            
+            /* Signature Styling */
+            .sig-container { position: relative; width: 150px; text-align: center; }
+            .principal-sig-img { 
+               position: absolute; 
+               bottom: 20px; 
+               left: 50%; 
+               transform: translateX(-50%); 
+               height: 45px; 
+               width: auto; 
+               mix-blend-mode: multiply; 
+            }
           </style>
         </head>
         <body>
           <div class="print-container">${content}</div>
           <script>
+            // Replace current assets with Base64 in the print window
+            const logo = document.querySelectorAll('.school-logo-img');
+            logo.forEach(img => img.src = "${logoBase64}");
+            
+            const sigs = document.querySelectorAll('.principal-sig-img');
+            sigs.forEach(img => img.src = "${sigBase64}");
+
             window.onload = () => {
               setTimeout(() => { window.print(); window.close(); }, 800);
             };
@@ -198,10 +239,10 @@ export default function MarksSheet() {
               <div className="main-border">
                 {/* Header Section */}
                 <div className="flex items-center w-full gap-2">
-                   {schoolInfo.logoUrl && <img src={schoolInfo.logoUrl} className="w-16 h-16 object-contain" alt="logo" />}
+                   {schoolInfo.logoUrl && <img src={schoolInfo.logoUrl} className="school-logo-img w-16 h-16 object-contain" alt="logo" />}
                    <div className="flex-1 text-center">
                       <h1 className="header-school-name text-2xl">{schoolInfo.name}</h1>
-                      <p className="header-subtext uppercase  text-[13px]">{schoolInfo.address}</p>
+                      <p className="header-subtext uppercase text-[13px]">{schoolInfo.address}</p>
                       <p className="header-subtext uppercase text-[11px] ">Mob: {schoolInfo.contact}</p>
                       <p className="header-subtext uppercase text-[11px] ">Website: {schoolInfo.website}</p>
                    </div>
@@ -316,7 +357,7 @@ export default function MarksSheet() {
                   </div>
                 </div>
 
-                {/* Footer Section - Fixed for Single Page */}
+                {/* Footer Section - Signature Logic Added */}
                 <div className="flex justify-between items-end mt-2 pt-4 px-2 pb-2">
                   <div className="text-center">
                     <div className="w-32 border-t border-blue-900 mb-1"></div>
@@ -325,9 +366,16 @@ export default function MarksSheet() {
                   <div className="w-16 h-16 border border-dashed border-blue-900 rounded-full flex items-center justify-center opacity-20">
                     <span className="text-[8px] font-bold text-blue-900">SEAL</span>
                   </div>
-                  <div className="text-center">
-                    <div className="w-40 border-t border-blue-900 mb-1"></div>
-                    <p className="text-[10px] font-black uppercase text-blue-900">Signature <br /> Principal/HeadMaster </p>
+                  
+                  {/* Principal Signature Area */}
+                  <div className="sig-container">
+                    {schoolInfo.signatureUrl && (
+                      <img src={schoolInfo.signatureUrl} className="principal-sig-img" alt="Principal Signature" />
+                    )}
+                    <div className="w-40 border-t border-blue-900 mb-1 mx-auto"></div>
+                    <p className="text-[10px] font-black uppercase text-blue-900">
+                      Signature <br /> Principal/HeadMaster
+                    </p>
                   </div>
                 </div>
               </div>
