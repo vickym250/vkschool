@@ -6,13 +6,15 @@ import { getAuth } from "firebase/auth"; // 👈 Ye missing tha
 
 
 const firebaseConfig = {
-  apiKey: "AIzaSyC9W3ABpuVgmQP3WJtV00At7g3Qud0iQOU",
-  authDomain: "schooltest-b8ce2.firebaseapp.com",
-  projectId: "schooltest-b8ce2",
-  storageBucket: "schooltest-b8ce2.firebasestorage.app",
-  messagingSenderId: "436336891260",
-  appId: "1:436336891260:web:dc98f8ea6e51897f4300f9",
+  apiKey: "AIzaSyDVFbgL4DUnknco-vnq7WgcnKnIpiu1d6I",
+  authDomain: "vivekanand-353c0.firebaseapp.com",
+  projectId: "vivekanand-353c0",
+  storageBucket: "vivekanand-353c0.firebasestorage.app",
+  messagingSenderId: "472467274625",
+  appId: "1:472467274625:web:a4b1ed6a15c22b39278680",
+  measurementId: "G-R4H6EHKNYB"
 };
+
 
 const app = initializeApp(firebaseConfig);
 
