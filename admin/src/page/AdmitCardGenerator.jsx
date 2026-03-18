@@ -138,9 +138,22 @@ const AdmitCardGenerator = () => {
     return unsub;
   }, [selectedClass, selectedSession, selectedExam]);
 
-  const executePrint = async (studentList) => {
+ const executePrint = async (studentList) => {
     if (studentList.length === 0) return;
     setIsPrinting(true);
+
+    // Helper function to convert "Class 1" to "1st", "Class 2" to "2nd" etc.
+    const getOrdinalClass = (className) => {
+      if (!className) return "N/A";
+      const match = className.match(/\d+/);
+      if (!match) return className; // Nursery, LKG etc. ko as-is rakhega
+      
+      const n = parseInt(match[0]);
+      const s = ["th", "st", "nd", "rd"];
+      const v = n % 100;
+      const suffix = s[(v - 20) % 10] || s[v] || s[0];
+      return n + suffix;
+    };
 
     try {
       // Logo aur Signature dono ko base64 mein convert kar rahe hain
@@ -183,7 +196,7 @@ const AdmitCardGenerator = () => {
               <div class="detail-row"><span>Roll No:</span> <b class="roll-txt">${stu.examRollNo || 'N/A'}</b></div>
               <div class="detail-row"><span>Name:</span> <b>${stu.name?.toUpperCase()}</b></div>
               <div class="detail-row"><span>Father:</span> ${stu.fatherName?.toUpperCase()}</div>
-              <div class="detail-row"><span>Class:</span> <b>${stu.className}</b></div>
+              <div class="detail-row"><span>Class:</span> <b>${getOrdinalClass(stu.className)}</b></div>
             </div>
 
             <div class="timetable-column">
@@ -217,7 +230,7 @@ const AdmitCardGenerator = () => {
 
           <div class="footer-section">
             <div class="timing-note">
-               <div class="timing-section" style="margin-top: -130px; border-top: 1px solid #eee; padding-top: 5px;">
+               <div class="timing-section" style="margin-top: -130px;  padding-top: 5px;">
                   <div class="detail-row"><span>1st Shift:</span> <b>${dbTimings.firstMtg} Onwards</b></div>
                   <div class="detail-row"><span>2nd Shift:</span> <b>${dbTimings.secondMtg} Onwards</b></div>
                   <p style="font-size: 8px; color: #d32f2f; margin: 2px 0;">* Late entry will not be permitted after the bell.</p>
