@@ -8,6 +8,7 @@ import LoginScreen from "./page/Login";
 import DashboardWeb from "./page/Dashboard";
 import AttendanceWeb from "./page/AttendanceScreen";
 import FinalResultWeb from "./page/FinalResultPage";
+import TeacherSchedule from "./page/TeacherSchedule";
 
 // --- Verifying Protected Route ---
 const ProtectedRoute = ({ children }) => {
@@ -67,6 +68,7 @@ function App() {
         <Route path="/" element={<ProtectedRoute><DashboardWeb /></ProtectedRoute>} />
         <Route path="/student-attendance" element={<ProtectedRoute><AttendanceWeb /></ProtectedRoute>} />
         <Route path="/final-result" element={<ProtectedRoute><FinalResultWeb /></ProtectedRoute>} />
+        <Route path="/teacherschedule" element={<ProtectedRoute><TeacherSchedule /></ProtectedRoute>} />
 
         {/* Catch-all */}
         <Route path="*" element={<Navigate to="/" />} />

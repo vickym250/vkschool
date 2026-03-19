@@ -85,6 +85,7 @@ export default function DashboardWeb() {
     { title: "Exam Papers", icon: <FileText size={28}/>, color: "text-orange-500", path: "/exam-papers" },
     { title: "Final Results", icon: <Trophy size={28}/>, color: "text-amber-500", path: "/final-result" },
     { title: "My Salary", icon: <IndianRupee size={28}/>, color: "text-green-600", path: "/my-salary" },
+    { title: "TeacherSchedule.jsx", icon: <IndianRupee size={28}/>, color: "text-green-600", path: "/teacherschedule" },
     { title: "Profile", icon: <User size={28}/>, color: "text-slate-600", path: "/profile" },
   ];
 
