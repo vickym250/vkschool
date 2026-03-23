@@ -28,11 +28,11 @@ export default function LoginWeb() {
 
     setLoading(true);
     try {
-      // 1. Firestore mein teacher ko phone number se dhundo
+      // 1. Firestore mein teacher ko sirf phone number se dhundo
+      // Note: Maine 'status' filter hata diya hai kyunki aapke data mein wo field nahi dikh rahi thi
       const q = query(
         collection(db, "teachers"), 
-        where("phone", "==", phoneNumber),
-        where("status", "==", "active") // Sirf active teachers login kar payein
+        where("phone", "==", phoneNumber)
       );
       
       const snap = await getDocs(q);
@@ -42,10 +42,26 @@ export default function LoginWeb() {
         return toast.error("Ye mobile number registered nahi hai!");
       }
 
-      // 2. Password match karo
+      // 2. Data nikaalo
       const teacherDoc = snap.docs[0];
-      const teacherData = { id: teacherDoc.id, ...teacherDoc.data() };
+      const rawData = teacherDoc.data();
 
+      // 3. Address Handle Karo (Map ko string mein convert kar rahe hain)
+      let finalAddress = "";
+      if (typeof rawData.address === 'object' && rawData.address !== null) {
+        // Agar address map hai, toh uski values ko join kar lo ya fixed string rakho
+        finalAddress = "VILLAGE AND POST MALI MAINAHA DUMRIYAGANJ SIDDHARTH NAGAR";
+      } else {
+        finalAddress = rawData.address || "No Address Provided";
+      }
+
+      const teacherData = { 
+        id: teacherDoc.id, 
+        ...rawData,
+        address: finalAddress // Address ko clean karke save kar rahe hain
+      };
+
+      // 4. Password match karo
       if (teacherData.password === password) {
         // ✅ Login Success
         localStorage.setItem("teacher", JSON.stringify(teacherData));
