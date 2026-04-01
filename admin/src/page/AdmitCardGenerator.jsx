@@ -16,7 +16,7 @@ const AdmitCardGenerator = () => {
     name: "SUNSHINE ENGLISH MEDIUM SCHOOL",
     address: "",
     logoUrl: "",
-    signatureUrl: "", // Naya field add kiya
+    signatureUrl: "",
   });
 
   const classOrder = [
@@ -25,6 +25,7 @@ const AdmitCardGenerator = () => {
     "Class 6", "Class 7", "Class 8", "Class 9", "Class 10", "Class 11", "Class 12"
   ];
 
+  // --- Session Logic ---
   const getCurrentSession = () => {
     const now = new Date();
     const currentMonth = now.getMonth();
@@ -32,8 +33,11 @@ const AdmitCardGenerator = () => {
     return currentMonth >= 3 ? `${currentYear}-${(currentYear + 1).toString().slice(-2)}` : `${currentYear - 1}-${currentYear.toString().slice(-2)}`;
   };
 
+  // Dropdown ke liye sessions ki list
+  const availableSessions = ["2023-24", "2024-25", "2025-26", "2026-27"];
+
   const [selectedClass, setSelectedClass] = useState("Class 1");
-  const [selectedSession, setSelectedSession] = useState(getCurrentSession());
+  const [selectedSession, setSelectedSession] = useState(getCurrentSession()); // Default dynamic session
   const [selectedExam, setSelectedExam] = useState("Half-Yearly");
   const [students, setStudents] = useState([]);
   const [availableClasses, setAvailableClasses] = useState([]);
@@ -43,7 +47,6 @@ const AdmitCardGenerator = () => {
 
   const examTypes = ["Quarterly", "Half-Yearly", "Annual", "Pre-Board"];
 
-  // Logo aur Signature dono ke liye Base64 conversion
   const getBase64FromUrl = async (url) => {
     if (!url) return "";
     try {
@@ -84,7 +87,7 @@ const AdmitCardGenerator = () => {
   }, []);
 
   const syncGlobalRollNumbers = async () => {
-    const confirm = window.confirm("Bhai, kya aap pure school ke bacchon ka Roll Number 1 se start karke save karna chahte hain?");
+    const confirm = window.confirm(`Bhai, kya aap Session ${selectedSession} ke sabhi bacchon ka Roll Number sync karna chahte hain?`);
     if (!confirm) return;
     setLoading(true);
     try {
@@ -102,13 +105,13 @@ const AdmitCardGenerator = () => {
         batch.update(doc(db, "students", stu.id), { examRollNo: index + 1 });
       });
       await batch.commit();
-      alert(`✅ Done! Roll numbers set ho gaye.`);
+      alert(`✅ Done! Session ${selectedSession} ke roll numbers set ho gaye.`);
     } catch (err) { alert("Error syncing!"); }
     setLoading(false);
   };
 
   const resetAllRollNumbers = async () => {
-    const confirm = window.confirm("Bhai, RESET karna chahte hain?");
+    const confirm = window.confirm(`Bhai, kya aap Session ${selectedSession} ke Roll Numbers RESET karna chahte hain?`);
     if (!confirm) return;
     setLoading(true);
     try {
@@ -124,12 +127,19 @@ const AdmitCardGenerator = () => {
 
   useEffect(() => {
     setLoading(true);
-    const q = query(collection(db, "students"), where("className", "==", selectedClass), where("session", "==", selectedSession));
+    // Yahan Session filter apply ho raha hai query mein
+    const q = query(
+        collection(db, "students"), 
+        where("className", "==", selectedClass), 
+        where("session", "==", selectedSession)
+    );
+    
     const unsub = onSnapshot(q, (snap) => {
       const data = snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((stu) => !stu.deletedAt);
       setStudents(data.sort((a, b) => (a.examRollNo || 0) - (b.examRollNo || 0)));
       setLoading(false);
     });
+
     const checkTT = async () => {
       const ttSnap = await getDoc(doc(db, "Timetables", selectedClass));
       setTimetableExists(ttSnap.exists() && ttSnap.data()[selectedExam]?.length > 0);
@@ -138,16 +148,14 @@ const AdmitCardGenerator = () => {
     return unsub;
   }, [selectedClass, selectedSession, selectedExam]);
 
- const executePrint = async (studentList) => {
+  const executePrint = async (studentList) => {
     if (studentList.length === 0) return;
     setIsPrinting(true);
 
-    // Helper function to convert "Class 1" to "1st", "Class 2" to "2nd" etc.
     const getOrdinalClass = (className) => {
       if (!className) return "N/A";
       const match = className.match(/\d+/);
-      if (!match) return className; // Nursery, LKG etc. ko as-is rakhega
-      
+      if (!match) return className; 
       const n = parseInt(match[0]);
       const s = ["th", "st", "nd", "rd"];
       const v = n % 100;
@@ -156,7 +164,6 @@ const AdmitCardGenerator = () => {
     };
 
     try {
-      // Logo aur Signature dono ko base64 mein convert kar rahe hain
       const logoBase64 = school.logoUrl ? await getBase64FromUrl(school.logoUrl) : "";
       const sigBase64 = school.signatureUrl ? await getBase64FromUrl(school.signatureUrl) : "";
       
@@ -337,6 +344,16 @@ const AdmitCardGenerator = () => {
           <div className="flex flex-wrap gap-2">
             <button onClick={resetAllRollNumbers} className="bg-red-500 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase shadow-md hover:bg-red-600 transition-all">RESET ROLLS</button>
             <button onClick={syncGlobalRollNumbers} className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase shadow-md hover:bg-emerald-700 transition-all">SYNC (1-1000)</button>
+            
+            {/* --- Session Select Dropdown --- */}
+            <select 
+                value={selectedSession} 
+                onChange={(e) => setSelectedSession(e.target.value)} 
+                className="border p-2 rounded-xl text-xs font-bold bg-indigo-50 border-indigo-200"
+            >
+                {availableSessions.map(s => <option key={s} value={s}>{s} {s === getCurrentSession() ? "(Current)" : ""}</option>)}
+            </select>
+
             <select value={selectedExam} onChange={(e) => setSelectedExam(e.target.value)} className="border p-2 rounded-xl text-xs font-bold">{examTypes.map(t => <option key={t} value={t}>{t}</option>)}</select>
             <select value={selectedClass} onChange={(e) => setSelectedClass(e.target.value)} className="border p-2 rounded-xl text-xs font-bold">{availableClasses.map(c => <option key={c} value={c}>{c}</option>)}</select>
             <button
@@ -357,7 +374,9 @@ const AdmitCardGenerator = () => {
               <tr><th className="p-4">EXAM ROLL</th><th className="p-4">STUDENT NAME</th><th className="p-4 text-right">ACTION</th></tr>
             </thead>
             <tbody className="divide-y text-xs font-bold">
-              {students.map(stu => (
+              {students.length === 0 ? (
+                  <tr><td colSpan="3" className="p-10 text-center text-slate-400">No students found for Session {selectedSession} in this class.</td></tr>
+              ) : students.map(stu => (
                 <tr key={stu.id} className="hover:bg-slate-50 transition-colors">
                   <td className="p-4 text-red-600">#{stu.examRollNo || '---'}</td>
                   <td className="p-4 text-slate-700">{stu.name}</td>
