@@ -10,6 +10,31 @@ import { useNavigate } from "react-router-dom";
 /* ==========================================
    MAIN DASHBOARD PAGE
    ========================================== */
+
+// Annual ho toh Half-Yearly + Annual combine karke % nikalo
+const getCombinedPercentage = (allDocs, studentId, primaryExam) => {
+  const primaryRes = allDocs.find(d => d.studentId === studentId && d.exam === primaryExam);
+  if (!primaryRes) return 0;
+
+  if (primaryExam === "Annual") {
+    const halfYearlyRes = allDocs.find(d => d.studentId === studentId && d.exam === "Half-Yearly");
+
+    const annualObt   = primaryRes.rows?.reduce((s, r) => s + (Number(r.marks) || 0), 0) || 0;
+    const annualTotal = primaryRes.rows?.reduce((s, r) => s + (Number(r.total) || 0), 0) || 0;
+
+    const halfObt   = halfYearlyRes?.rows?.reduce((s, r) => s + (Number(r.marks) || 0), 0) || 0;
+    const halfTotal = halfYearlyRes?.rows?.reduce((s, r) => s + (Number(r.total) || 0), 0) || 0;
+
+    const totalObt = annualObt + halfObt;
+    const totalMax = annualTotal + halfTotal;
+    return totalMax > 0 ? Number(((totalObt / totalMax) * 100).toFixed(1)) : 0;
+  } else {
+    const obt   = primaryRes.rows?.reduce((s, r) => s + (Number(r.marks) || 0), 0) || 0;
+    const total = primaryRes.rows?.reduce((s, r) => s + (Number(r.total) || 0), 0) || 0;
+    return total > 0 ? Number(((obt / total) * 100).toFixed(1)) : 0;
+  }
+};
+
 export default function FinalResultPage() {
   const navigate = useNavigate();
   
@@ -43,7 +68,7 @@ export default function FinalResultPage() {
   const [magicMin, setMagicMin] = useState("50");
   const [magicMax, setMagicMax] = useState("90");
 
-  // New States for Toppers
+  // Toppers
   const [schoolToppers, setSchoolToppers] = useState([]);
   const [classToppers, setClassToppers] = useState([]);
 
@@ -68,9 +93,11 @@ export default function FinalResultPage() {
 
   const loadResults = async () => {
     const classToFetch = showForm ? cls : filterClass;
-    const examToFetch = showForm ? exam : filterExam;
+    const examToFetch  = showForm ? exam : filterExam;
     if (!classToFetch) return;
+
     try {
+      // Step 1: Current class + exam ke results
       const q = query(
         collection(db, "examResults"), 
         where("className", "==", classToFetch), 
@@ -80,19 +107,15 @@ export default function FinalResultPage() {
       );
       const snap = await getDocs(q);
       const results = snap.docs.map(d => {
-          const data = d.data();
-          const obt = data.rows?.reduce((s, r) => s + (Number(r.marks) || 0), 0);
-          const total = data.rows?.reduce((s, r) => s + (Number(r.total) || 0), 0);
-          const percentage = total > 0 ? ((obt / total) * 100).toFixed(1) : 0;
-          return { id: d.id, percentage: Number(percentage), ...data };
+        const data = d.data();
+        const obt   = data.rows?.reduce((s, r) => s + (Number(r.marks) || 0), 0);
+        const total = data.rows?.reduce((s, r) => s + (Number(r.total) || 0), 0);
+        const percentage = total > 0 ? ((obt / total) * 100).toFixed(1) : 0;
+        return { id: d.id, percentage: Number(percentage), ...data };
       });
       setResultList(results);
-      
-      // Class Toppers Logic (Top 3)
-      const sortedClass = [...results].sort((a, b) => b.percentage - a.percentage).slice(0, 3);
-      setClassToppers(sortedClass);
 
-      // School Toppers Logic (Pure session ke Top 3)
+      // Step 2: School level — poore session ke results fetch karo
       const qAll = query(
         collection(db, "examResults"),
         where("session", "==", session),
@@ -100,13 +123,47 @@ export default function FinalResultPage() {
         where("delete_at", "==", null)
       );
       const allSnap = await getDocs(qAll);
-      const allRes = allSnap.docs.map(d => {
-          const data = d.data();
-          const obt = data.rows?.reduce((s, r) => s + (Number(r.marks) || 0), 0);
-          const total = data.rows?.reduce((s, r) => s + (Number(r.total) || 0), 0);
-          return { name: data.name, className: data.className, percentage: total > 0 ? Number(((obt / total) * 100).toFixed(1)) : 0 };
-      }).sort((a, b) => b.percentage - a.percentage).slice(0, 3);
-      setSchoolToppers(allRes);
+      const allExamDocs = allSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+      // Step 3: Annual hai toh Half-Yearly bhi fetch karo combine karne ke liye
+      let halfYearlyDocs = [];
+      if (examToFetch === "Annual") {
+        const qHalf = query(
+          collection(db, "examResults"),
+          where("session", "==", session),
+          where("exam", "==", "Half-Yearly"),
+          where("delete_at", "==", null)
+        );
+        const halfSnap = await getDocs(qHalf);
+        halfYearlyDocs = halfSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      }
+
+      // Sabko ek array mein merge karo (getCombinedPercentage dono exam dhundhta hai isme se)
+      const mergedDocs = [...allExamDocs, ...halfYearlyDocs];
+
+      // Step 4: School Toppers — Annual students unique list, combined % se sort
+      const schoolRes = allExamDocs
+        .map(d => ({
+          name: d.name,
+          className: d.className,
+          percentage: getCombinedPercentage(mergedDocs, d.studentId, examToFetch)
+        }))
+        .sort((a, b) => b.percentage - a.percentage)
+        .slice(0, 3);
+      setSchoolToppers(schoolRes);
+
+      // Step 5: Class Toppers — current class ke results + half yearly merged, combined % se sort
+      const classHalfYearlyDocs = halfYearlyDocs.filter(d => d.className === classToFetch);
+      const mergedClassDocs = [...results, ...classHalfYearlyDocs];
+
+      const classRes = results
+        .map(r => ({
+          ...r,
+          percentage: getCombinedPercentage(mergedClassDocs, r.studentId, examToFetch)
+        }))
+        .sort((a, b) => b.percentage - a.percentage)
+        .slice(0, 3);
+      setClassToppers(classRes);
 
     } catch (err) { console.error("Fetch Results Error:", err); }
   };
@@ -248,11 +305,14 @@ export default function FinalResultPage() {
       
       <div className="max-w-7xl mx-auto">
         
-        {/* NEW TOPPERS SECTION */}
+        {/* TOPPERS SECTION */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             {/* School Toppers */}
             <div className="bg-gradient-to-br from-indigo-600 to-blue-700 p-5 rounded-[24px] shadow-lg text-white">
-                <h3 className="text-xs mb-3 flex items-center gap-2">🏆 SCHOOL TOPPERS (TOP 3)</h3>
+                <h3 className="text-xs mb-3 flex items-center gap-2">
+                  🏆 SCHOOL TOPPERS (TOP 3)
+                  {filterExam === "Annual" && <span className="text-[8px] bg-white/20 px-2 py-0.5 rounded-full">Half-Yearly + Annual Combined</span>}
+                </h3>
                 <div className="space-y-2">
                     {schoolToppers.length > 0 ? schoolToppers.map((t, i) => (
                         <div key={i} className="flex justify-between items-center bg-white/10 p-2 rounded-xl border border-white/10">
@@ -271,7 +331,10 @@ export default function FinalResultPage() {
 
             {/* Class Toppers */}
             <div className="bg-gradient-to-br from-orange-500 to-red-600 p-5 rounded-[24px] shadow-lg text-white">
-                <h3 className="text-xs mb-3 flex items-center gap-2">⭐ {filterClass} TOPPERS (TOP 3)</h3>
+                <h3 className="text-xs mb-3 flex items-center gap-2">
+                  ⭐ {filterClass} TOPPERS (TOP 3)
+                  {filterExam === "Annual" && <span className="text-[8px] bg-white/20 px-2 py-0.5 rounded-full">Half-Yearly + Annual Combined</span>}
+                </h3>
                 <div className="space-y-2">
                     {classToppers.length > 0 ? classToppers.map((t, i) => (
                         <div key={i} className="flex justify-between items-center bg-white/10 p-2 rounded-xl border border-white/10">
