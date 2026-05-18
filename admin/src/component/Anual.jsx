@@ -549,7 +549,7 @@ export default function MarksSheet() {
                   <div className="sig-container" style={{ position: "relative", width: "150px", textAlign: "center", bottom: "20px" }}>
                     {schoolInfo.signatureUrl && (
                       <img src={schoolInfo.signatureUrl} className="principal-sig-img" alt="Principal Signature"
-                        style={{ position: "absolute", bottom: "20px", left: "50%", transform: "translateX(-50%)", height: "45px", width: "auto", mixBlendMode: "multiply" }}
+                        style={{ position: "absolute", bottom: "20px", left: "50%", transform: "translateX(-50%)", height: "75px", width: "auto", mixBlendMode: "multiply" }}
                       />
                     )}
                     <div style={{ width: "160px", borderTop: `1px solid ${theme.primary}`, marginBottom: "4px", marginLeft: "auto", marginRight: "auto" }}></div>
