@@ -213,8 +213,9 @@ export default function MarksSheet() {
   };
 
   // ─── Helper: check if student is NOT deleted ─────────────────────────────
+  // Database mein field name "delete_at" hai (Firestore Timestamp ya null)
   const isNotDeleted = (data) => {
-    return data.deletedAt === null || data.deletedAt === undefined;
+    return data.delete_at === null || data.delete_at === undefined;
   };
 
   const loadData = async () => {
