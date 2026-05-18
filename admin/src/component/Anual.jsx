@@ -212,6 +212,11 @@ export default function MarksSheet() {
     printWindow.document.close();
   };
 
+  // ─── Helper: check if student is NOT deleted ─────────────────────────────
+  const isNotDeleted = (data) => {
+    return data.deletedAt === null || data.deletedAt === undefined;
+  };
+
   const loadData = async () => {
     setLoading(true);
     try {
@@ -230,7 +235,12 @@ export default function MarksSheet() {
           setSubjects(mapping[sName] || mapping["Class " + sName] || []);
         }
         const stuSnap = await getDocs(query(collection(db, "students"), where("className", "==", sName)));
-        const students = stuSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        // ✅ deletedAt null/undefined wale hi lo
+        const students = stuSnap.docs
+          .map(d => ({ id: d.id, ...d.data() }))
+          .filter(s => isNotDeleted(s));
+
         const all = [];
         for (const stu of students) {
           const rSnap = await getDocs(query(collection(db, "examResults"), where("studentId", "==", stu.id), where("session", "==", session)));
@@ -247,6 +257,14 @@ export default function MarksSheet() {
         const stuSnap = await getDoc(doc(db, "students", studentId));
         if (stuSnap.exists()) {
           const stu = stuSnap.data();
+
+          // ✅ Agar deletedAt set hai (null nahi) to kuch mat dikha
+          if (!isNotDeleted(stu)) {
+            setClassResults([]);
+            setLoading(false);
+            return;
+          }
+
           const mSnap = await getDoc(doc(db, "school_config", "master_data"));
           if (mSnap.exists()) setSubjects(mSnap.data().mapping[stu.className] || []);
           const rSnap = await getDocs(query(collection(db, "examResults"), where("studentId", "==", studentId), where("session", "==", session)));
