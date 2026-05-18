@@ -245,7 +245,10 @@ export default function MarksSheet() {
         const all = [];
         for (const stu of students) {
           const rSnap = await getDocs(query(collection(db, "examResults"), where("studentId", "==", stu.id), where("session", "==", session)));
-          const resDocs = rSnap.docs.map(d => d.data());
+          // ✅ examResults mein bhi delete_at null/undefined wale hi lo
+          const resDocs = rSnap.docs
+            .map(d => d.data())
+            .filter(r => r.delete_at === null || r.delete_at === undefined);
           const h = resDocs.find(r => r.exam === "Half-Yearly");
           const a = resDocs.find(r => r.exam === "Annual");
           if (h || a) {
@@ -269,7 +272,10 @@ export default function MarksSheet() {
           const mSnap = await getDoc(doc(db, "school_config", "master_data"));
           if (mSnap.exists()) setSubjects(mSnap.data().mapping[stu.className] || []);
           const rSnap = await getDocs(query(collection(db, "examResults"), where("studentId", "==", studentId), where("session", "==", session)));
-          const resDocs = rSnap.docs.map(d => d.data());
+          // ✅ examResults mein bhi delete_at null/undefined wale hi lo
+          const resDocs = rSnap.docs
+            .map(d => d.data())
+            .filter(r => r.delete_at === null || r.delete_at === undefined);
           setClassResults([{
             student: { id: studentId, ...stu },
             half: resDocs.find(r => r.exam === "Half-Yearly"),
