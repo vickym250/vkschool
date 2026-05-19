@@ -8,30 +8,64 @@ import toast, { Toaster } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 
 /* ==========================================
-   MAIN DASHBOARD PAGE
+   MAIN DASHBOARD PAGE (UPDATED WITH MARKSHEET LOGIC)
    ========================================== */
 
-// Annual ho toh Half-Yearly + Annual combine karke % nikalo
-const getCombinedPercentage = (allDocs, studentId, primaryExam) => {
+// ✅ MARKSHEET PAGE KE EXACT LOGIC PAR ADHARIT FUNCTION
+const getCombinedPercentage = (allDocs, studentId, primaryExam, classSubjects = []) => {
   const primaryRes = allDocs.find(d => d.studentId === studentId && d.exam === primaryExam);
   if (!primaryRes) return 0;
 
+  const halfYearlyRes = allDocs.find(d => d.studentId === studentId && d.exam === "Half-Yearly");
+
+  const normalize = (str = "") => str.toLowerCase().replace(/[^a-z]/g, "");
+
+  const getRow = (examDoc, subject) => {
+    if (!examDoc || !examDoc.rows) return { total: 0, marks: 0 };
+    const found = examDoc.rows.find((r) => normalize(r.subject) === normalize(subject));
+    return found || { total: 0, marks: 0 };
+  };
+
+  // Safe Check: Agar master subjects list khali hai, toh purane database rows se fallback calculation karega
+  if (!classSubjects || classSubjects.length === 0) {
+    if (primaryExam === "Annual") {
+      const annualObt   = primaryRes.rows?.reduce((s, r) => s + (Number(r.marks) || 0), 0) || 0;
+      const annualTotal = primaryRes.rows?.reduce((s, r) => s + (Number(r.total) || 0), 0) || 0;
+
+      const halfObt   = halfYearlyRes?.rows?.reduce((s, r) => s + (Number(r.marks) || 0), 0) || 0;
+      const halfTotal = halfYearlyRes?.rows?.reduce((s, r) => s + (Number(r.total) || 0), 0) || 0;
+
+      const totalObt = annualObt + halfObt;
+      const totalMax = annualTotal + halfTotal;
+      return totalMax > 0 ? Number(((totalObt / totalMax) * 100).toFixed(2)) : 0;
+    } else {
+      const obt   = primaryRes.rows?.reduce((s, r) => s + (Number(r.marks) || 0), 0) || 0;
+      const total = primaryRes.rows?.reduce((s, r) => s + (Number(r.total) || 0), 0) || 0;
+      return total > 0 ? Number(((obt / total) * 100).toFixed(2)) : 0;
+    }
+  }
+
+  // ─── MARKSHEET CORE LOGIC REPLICATED ───
+  let tHMax = 0, tHObt = 0, tAMax = 0, tAObt = 0;
+
+  classSubjects.forEach((sub) => {
+    const h = getRow(halfYearlyRes, sub);
+    const a = getRow(primaryRes, sub);
+
+    // Marksheet fallback: agar data missing hai toh max me 50 aur obt me 0
+    tHMax += Number(h.total) || 50; 
+    tHObt += Number(h.marks) || 0;
+    tAMax += Number(a.total) || 50;
+    tAObt += Number(a.marks) || 0;
+  });
+
   if (primaryExam === "Annual") {
-    const halfYearlyRes = allDocs.find(d => d.studentId === studentId && d.exam === "Half-Yearly");
-
-    const annualObt   = primaryRes.rows?.reduce((s, r) => s + (Number(r.marks) || 0), 0) || 0;
-    const annualTotal = primaryRes.rows?.reduce((s, r) => s + (Number(r.total) || 0), 0) || 0;
-
-    const halfObt   = halfYearlyRes?.rows?.reduce((s, r) => s + (Number(r.marks) || 0), 0) || 0;
-    const halfTotal = halfYearlyRes?.rows?.reduce((s, r) => s + (Number(r.total) || 0), 0) || 0;
-
-    const totalObt = annualObt + halfObt;
-    const totalMax = annualTotal + halfTotal;
-    return totalMax > 0 ? Number(((totalObt / totalMax) * 100).toFixed(1)) : 0;
+    const gMax = tHMax + tAMax;
+    const gObt = tHObt + tAObt;
+    return gMax > 0 ? Number(((gObt / gMax) * 100).toFixed(2)) : 0;
   } else {
-    const obt   = primaryRes.rows?.reduce((s, r) => s + (Number(r.marks) || 0), 0) || 0;
-    const total = primaryRes.rows?.reduce((s, r) => s + (Number(r.total) || 0), 0) || 0;
-    return total > 0 ? Number(((obt / total) * 100).toFixed(1)) : 0;
+    // Agar Half-Yearly ya Quarterly filter kiya ho dashboard par
+    return tHMax > 0 ? Number(((tHObt / tHMax) * 100).toFixed(2)) : 0;
   }
 };
 
@@ -72,6 +106,7 @@ export default function FinalResultPage() {
   const [schoolToppers, setSchoolToppers] = useState([]);
   const [classToppers, setClassToppers] = useState([]);
 
+  // Master data state ko pehle fetch karenge taaki use kiya jaa sake
   useEffect(() => {
     const fetchMasterData = async () => {
       try {
@@ -106,14 +141,9 @@ export default function FinalResultPage() {
         where("delete_at", "==", null)
       );
       const snap = await getDocs(q);
-      const results = snap.docs.map(d => {
-        const data = d.data();
-        const obt   = data.rows?.reduce((s, r) => s + (Number(r.marks) || 0), 0);
-        const total = data.rows?.reduce((s, r) => s + (Number(r.total) || 0), 0);
-        const percentage = total > 0 ? ((obt / total) * 100).toFixed(1) : 0;
-        return { id: d.id, percentage: Number(percentage), ...data };
-      });
-      setResultList(results);
+      
+      // Current filtered class ke master subjects list
+      const currentClassSubs = subjectMaster[classToFetch] || [];
 
       // Step 2: School level — poore session + current exam ke results fetch karo
       const qAll = query(
@@ -139,36 +169,40 @@ export default function FinalResultPage() {
       }
 
       // Step 4: Sabko ek array mein merge karo
-      // getCombinedPercentage dono exam dhundhta hai isme se
       const mergedDocs = [...allExamDocs, ...halfYearlyDocs];
 
-      // Step 5: School Toppers — Annual students unique list, combined % se sort
+      // Step 5: Table ke liye results map karo (Marksheet logic integration)
+      const results = snap.docs.map(d => {
+        const data = d.data();
+        const percentage = getCombinedPercentage(mergedDocs, data.studentId, examToFetch, currentClassSubs);
+        return { id: d.id, percentage: Number(percentage), ...data };
+      });
+      setResultList(results);
+
+      // Step 6: School Toppers — Har student ki unki respective class ke subjects bhejenge
       const schoolRes = allExamDocs
-        .map(d => ({
-          name: d.name,
-          className: d.className,
-          // ✅ FIX: mergedDocs use karo taaki Half-Yearly bhi mile
-          percentage: getCombinedPercentage(mergedDocs, d.studentId, examToFetch)
-        }))
+        .map(d => {
+          const studentClassSubs = subjectMaster[d.className] || [];
+          return {
+            name: d.name,
+            className: d.className,
+            percentage: getCombinedPercentage(mergedDocs, d.studentId, examToFetch, studentClassSubs)
+          };
+        })
         .sort((a, b) => b.percentage - a.percentage)
         .slice(0, 3);
       setSchoolToppers(schoolRes);
 
-      // Step 6: Class Toppers
-      // ✅ FIX: allExamDocs se current class ke raw docs filter karo
-      // (processed `results` use karne se studentId mismatch hota tha)
+      // Step 7: Class Toppers
       const classAnnualDocs = allExamDocs.filter(d => d.className === classToFetch);
       const classHalfYearlyDocs = halfYearlyDocs.filter(d => d.className === classToFetch);
-
-      // Dono ko merge karo — getCombinedPercentage yahi dhundhega
       const mergedClassDocs = [...classAnnualDocs, ...classHalfYearlyDocs];
 
       const classRes = classAnnualDocs
         .map(d => ({
           name: d.name,
           studentId: d.studentId,
-          // ✅ FIX: mergedClassDocs se combined % nikalo
-          percentage: getCombinedPercentage(mergedClassDocs, d.studentId, examToFetch)
+          percentage: getCombinedPercentage(mergedClassDocs, d.studentId, examToFetch, currentClassSubs)
         }))
         .sort((a, b) => b.percentage - a.percentage)
         .slice(0, 3);
@@ -177,8 +211,9 @@ export default function FinalResultPage() {
     } catch (err) { console.error("Fetch Results Error:", err); }
   };
 
-  useEffect(() => { if(!showForm) loadResults(); }, [filterClass, filterExam, session, showForm]);
-  useEffect(() => { if(showForm) loadResults(); }, [exam, cls, session, showForm]);
+  // Master data load hone ke baad triggers manage karein
+  useEffect(() => { if(!showForm) loadResults(); }, [filterClass, filterExam, session, showForm, subjectMaster]);
+  useEffect(() => { if(showForm) loadResults(); }, [exam, cls, session, showForm, subjectMaster]);
 
   useEffect(() => {
     if (!cls) return;
