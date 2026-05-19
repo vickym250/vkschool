@@ -97,7 +97,7 @@ export default function FinalResultPage() {
     if (!classToFetch) return;
 
     try {
-      // Step 1: Current class + exam ke results
+      // Step 1: Current class + exam ke results (dashboard table ke liye)
       const q = query(
         collection(db, "examResults"), 
         where("className", "==", classToFetch), 
@@ -115,7 +115,7 @@ export default function FinalResultPage() {
       });
       setResultList(results);
 
-      // Step 2: School level — poore session ke results fetch karo
+      // Step 2: School level — poore session + current exam ke results fetch karo
       const qAll = query(
         collection(db, "examResults"),
         where("session", "==", session),
@@ -138,28 +138,37 @@ export default function FinalResultPage() {
         halfYearlyDocs = halfSnap.docs.map(d => ({ id: d.id, ...d.data() }));
       }
 
-      // Sabko ek array mein merge karo (getCombinedPercentage dono exam dhundhta hai isme se)
+      // Step 4: Sabko ek array mein merge karo
+      // getCombinedPercentage dono exam dhundhta hai isme se
       const mergedDocs = [...allExamDocs, ...halfYearlyDocs];
 
-      // Step 4: School Toppers — Annual students unique list, combined % se sort
+      // Step 5: School Toppers — Annual students unique list, combined % se sort
       const schoolRes = allExamDocs
         .map(d => ({
           name: d.name,
           className: d.className,
+          // ✅ FIX: mergedDocs use karo taaki Half-Yearly bhi mile
           percentage: getCombinedPercentage(mergedDocs, d.studentId, examToFetch)
         }))
         .sort((a, b) => b.percentage - a.percentage)
         .slice(0, 3);
       setSchoolToppers(schoolRes);
 
-      // Step 5: Class Toppers — current class ke results + half yearly merged, combined % se sort
+      // Step 6: Class Toppers
+      // ✅ FIX: allExamDocs se current class ke raw docs filter karo
+      // (processed `results` use karne se studentId mismatch hota tha)
+      const classAnnualDocs = allExamDocs.filter(d => d.className === classToFetch);
       const classHalfYearlyDocs = halfYearlyDocs.filter(d => d.className === classToFetch);
-      const mergedClassDocs = [...results, ...classHalfYearlyDocs];
 
-      const classRes = results
-        .map(r => ({
-          ...r,
-          percentage: getCombinedPercentage(mergedClassDocs, r.studentId, examToFetch)
+      // Dono ko merge karo — getCombinedPercentage yahi dhundhega
+      const mergedClassDocs = [...classAnnualDocs, ...classHalfYearlyDocs];
+
+      const classRes = classAnnualDocs
+        .map(d => ({
+          name: d.name,
+          studentId: d.studentId,
+          // ✅ FIX: mergedClassDocs se combined % nikalo
+          percentage: getCombinedPercentage(mergedClassDocs, d.studentId, examToFetch)
         }))
         .sort((a, b) => b.percentage - a.percentage)
         .slice(0, 3);
